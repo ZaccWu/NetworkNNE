@@ -37,9 +37,6 @@ results = Parallel(n_jobs=-1)(delayed(simulate_moment)(basket_theta[t, :]) for t
 
 # 拆分 input 和 label
 input_list, label_list = zip(*results)
-print(input_list, label_list)
-print(len(input_list), len(label_list))
-
 input_array = np.vstack(input_list)
 label_array = np.vstack(label_list)
 

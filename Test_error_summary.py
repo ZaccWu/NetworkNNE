@@ -9,7 +9,7 @@ def Test_error_summary(input_test, label_test, label_name, net, figure=True, tab
 
     Parameters
     ----------
-    input_test : np.ndarray
+    input_test : torch.tensor
     label_test : np.ndarray
     label_name : list of str
     net : trained network object with .predict() method
@@ -36,7 +36,8 @@ def Test_error_summary(input_test, label_test, label_name, net, figure=True, tab
         raise ValueError("label format not recognized")
 
     # Predict
-    y_hat = net.predict(input_test)  # adjust this depending on your Python net object
+    y_hat = net(input_test)  # adjust this depending on your Python net object
+    y_hat = y_hat.detach().cpu().numpy()
     err = y_hat[:, :m] - label_test[:, :m]
 
     sdd = None
@@ -90,6 +91,6 @@ def Test_error_summary(input_test, label_test, label_name, net, figure=True, tab
             'mean_SD': mean_SD
         }, index=label_name)
 
-        print(result)
+        print("Test results:", result)
 
     return err, sdd

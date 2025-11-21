@@ -5,19 +5,28 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from Positive_transform import Positive_transform
+import pickle
+from Test_error_summary import Test_error_summary
 
-# ----------------------------
 # Settings
-# ----------------------------
-disp_test_summary = False
-display_fig = False
-disp_iter = False
+disp_test_summary = True
+display_fig = True
+disp_iter = True
 learn_standard_error = True
 
-# ----------------------------
 # Data preparation
-# ----------------------------
-# 假设 input_train, label_train, input_test, label_test, input_real, lb, ub 已经是 numpy 数组
+with open('training_set_gen.pkl', 'rb') as f:  # data from "set_up.py"
+    data = pickle.load(f)
+
+input_train = data['input_train']
+label_train = data['label_train']
+input_test = data['input_test']
+label_test = data['label_test']
+input_real = data['input_real']
+
+lb, ub = data['lb'], data['ub']
+label_name = data['label_name']
+
 T_train = input_train.shape[0]
 T_test = input_test.shape[0]
 T = T_train + T_test
@@ -106,7 +115,7 @@ if disp_test_summary:
     with torch.no_grad():
         test_preds = net(torch.tensor(input_test, dtype=torch.float32))
     # 调用自定义 Test_error_summary 函数或写可视化/表格代码
-    # Test_error_summary(input_test, label_test, label_name, net, 'figure', display_fig, 'table', 1)
+    Test_error_summary(torch.tensor(input_test, dtype=torch.float32), label_test, label_name, net, figure=display_fig, table=1)
 
 # ----------------------------
 # Estimate on original data
