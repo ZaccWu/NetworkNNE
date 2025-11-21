@@ -18,14 +18,16 @@ def Moments(network, guild):
     moment2_list = []
 
     # --- moment1: period-wise statistics ---
+
     for p in range(period):
         Y = network[p]
-        deg = np.array(Y.sum(axis=1)).flatten()  # 度数
-
+        #deg = np.array(Y.sum(axis=1)).flatten()  # 度数
+        deg = np.array(Y.sum(axis=1).A1).flatten()  # 求和+转成 长度 n 的一维 numpy array
         moment1 = np.array([
             np.mean(deg),
             np.var(deg),
-            Clustering_global(Y),
+            #Clustering_global(Y),
+            Clustering_global(Y)[0],
         ])
         moment1_list.append(moment1)
 
@@ -61,13 +63,17 @@ def Moments(network, guild):
         i1 = np.tril_indices(n, k=-1)
         D1 = np.column_stack([Y0[i1], dist[i1], log_deg_sum[i1], same_guild[i1]])
 
-        i2 = np.tril((Y - draw1.toarray() if isspmatrix(draw1) else Y - draw1).astype(bool), k=-1)
+        A2 = Y.astype(int)
+        B2 = draw1.toarray().astype(int) if isspmatrix(draw1) else draw1.astype(int)
+        i2 = np.tril((A2-B2).astype(bool), k=-1)
         D2 = np.column_stack([Y0[i2], dist[i2], log_deg_sum[i2], same_guild[i2]])
 
         i3 = L.astype(bool)
         D3 = np.column_stack([L0[i3], fac_friend[i3], storage[i3], linkage[i3]])
 
-        i4 = (L - draw2.toarray() if isspmatrix(draw2) else L - draw2) < 0
+        A4 = L.astype(int)
+        B4 = draw2.toarray().astype(int) if isspmatrix(draw2) else draw2.astype(int)
+        i4 = (A4-B4) < 0
         D4 = np.column_stack([L0[i4], fac_friend[i4], storage[i4], linkage[i4]])
 
         moment2 = Stat(D1, D2, D3, D4)

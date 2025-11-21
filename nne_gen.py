@@ -8,7 +8,7 @@ from Moments import Moments
 # ----------------------------
 # LOAD
 # ----------------------------
-with open('training_set.pkl', 'rb') as f:  # 使用之前 Python 版本保存的 pkl 文件
+with open('training_set.pkl', 'rb') as f:  # data from "set_up.py"
     data = pickle.load(f)
 
 basket_theta = data['basket_theta']
@@ -37,6 +37,9 @@ results = Parallel(n_jobs=-1)(delayed(simulate_moment)(basket_theta[t, :]) for t
 
 # 拆分 input 和 label
 input_list, label_list = zip(*results)
+print(input_list, label_list)
+print(len(input_list), len(label_list))
+
 input_array = np.vstack(input_list)
 label_array = np.vstack(label_list)
 
