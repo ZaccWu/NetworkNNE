@@ -38,52 +38,45 @@ lb = bounds[:, 1].astype(float)
 ub = bounds[:, 2].astype(float)
 label_name = bounds[:, 3].tolist()
 
-# ----------------------------
-# SIMULATE "REAL DATA"
-# ----------------------------
+
+# --- SIMULATE "REAL DATA" ---
+# network, guild: list of sparse numpy matrix (len=period)
 network, guild = Model(theta, n, m, period)
-moment = Moments(network, guild)
+#moment = Moments(network, guild)
 Descriptive(network, guild)
 
-# ----------------------------
-# PARAMETER BASKET
-# ----------------------------
+
+# --- PARAMETER BASKET ---
 print("Sampling parameter basket...")
 start_time = time.time()
 
 basket_theta = np.full((T, len(label_name)), np.nan)
 
-# 计算真实网络密度
-rho = np.count_nonzero(network[0]) / n / (n - 1)
+# Calculate network density
+# rho = np.count_nonzero(network[0]) / n / (n - 1)
+rho = network[0].sum() / n / (n - 1) # 利用csr matrix的特性计算网络密度
 
-n0 = 500
-m0 = 100
+n0, m0 = 500, 100
 
-for i in range(T):
+for t in range(T):
     while True:
-        # uniform sampling within bounds
-        theta_sample = np.random.uniform(lb, ub)
-
+        theta_sample = np.random.uniform(lb, ub) # uniform sampling within bounds
         network_simul, guild_simul = Model(theta_sample, n0, m0, 1)
-
-        density = np.count_nonzero(network_simul[0]) / n0 / (n0 - 1)
-
-        if rho / 5 < density < rho * 5:
-            basket_theta[i, :] = theta_sample
+        density = network[0].sum() / n0 / (n0 - 1)
+        print(t, density, rho)
+        if rho / 5 < density < rho * 5: # 选择密度在一定初始网络一定范围内的样本
+            basket_theta[t, :] = theta_sample
             break
 
 print(f" Done. Time spent: {time.time() - start_time:.2f} seconds")
 
-# ----------------------------
-# SAVE
-# ----------------------------
 save_dict = {
-    'network': network,
-    'guild': guild,
-    'label_name': label_name,
-    'lb': lb,
-    'ub': ub,
-    'basket_theta': basket_theta
+    'network': network, # csr sparse matrix
+    'guild': guild,     # csr sparse matrix
+    'label_name': label_name, # parameter name
+    'lb': lb,           # parameter lower bound
+    'ub': ub,           # parameter upper bound
+    'basket_theta': basket_theta    # true parameter values
 }
 
 with open('training_set.pkl', 'wb') as f:

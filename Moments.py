@@ -25,7 +25,7 @@ def Moments(network, guild):
         moment1 = np.array([
             np.mean(deg),
             np.var(deg),
-            Clustering_global(Y)
+            Clustering_global(Y),
         ])
         moment1_list.append(moment1)
 
