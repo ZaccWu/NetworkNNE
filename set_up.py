@@ -12,8 +12,8 @@ n = 2511
 m = 537
 period = 4
 
-T = int(1e4)  # number of parameter samples
-# T = 10       # 可以用于测试
+# T = int(1e4)  # number of parameter samples
+T = 10       # 可以用于测试
 
 # ----------------------------
 # BOUNDS
