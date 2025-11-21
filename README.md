@@ -13,8 +13,7 @@ We highly recommend using `Conda` for installing requirements and implementation
 > scikit-learn 1.3.0 \
 
 
-
-<font color=Red>This code is on developed for more user-friendly and extended to more interesting configurations.</font>
+<span style="color:red">！This code is on developed for more user-friendly and extended to more interesting configurations.</span>
 
 
 ## File Structures
