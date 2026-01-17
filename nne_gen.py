@@ -4,12 +4,14 @@ from joblib import Parallel, delayed
 import pickle
 from Model import Model
 from Moments import Moments
+from data_save_load import save_dict_safe, load_dict_safe
 
 # ----------------------------
 # LOAD
 # ----------------------------
 with open('training_set.pkl', 'rb') as f:  # data from "set_up.py"
     data = pickle.load(f)
+
 
 basket_theta = data['basket_theta']
 guild = data['guild']

@@ -4,6 +4,7 @@ import pickle
 from Model import Model
 from Moments import Moments
 from Descriptive import Descriptive
+from data_save_load import save_dict_safe, load_dict_safe
 
 # ----------------------------
 # LOAD / SET-UP
@@ -42,6 +43,10 @@ label_name = bounds[:, 3].tolist()
 # --- SIMULATE "REAL DATA" ---
 # network, guild: list of sparse numpy matrix (len=period)
 network, guild = Model(theta, n, m, period)
+
+print(network)
+print(guild)
+
 #moment = Moments(network, guild)
 Descriptive(network, guild)
 

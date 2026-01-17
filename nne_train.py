@@ -1,5 +1,8 @@
 
 import numpy as np
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -7,6 +10,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from Positive_transform import Positive_transform
 import pickle
 from Test_error_summary import Test_error_summary
+from data_save_load import save_dict_safe, load_dict_safe
 
 # Settings
 disp_test_summary = True
@@ -14,7 +18,6 @@ display_fig = True
 disp_iter = True
 learn_standard_error = True
 
-# Data preparation
 with open('training_set_gen.pkl', 'rb') as f:  # data from "set_up.py"
     data = pickle.load(f)
 
