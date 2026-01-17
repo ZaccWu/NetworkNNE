@@ -23,7 +23,7 @@ print("Simulating training data...")
 start_time = time.time()
 
 # --- SETUP ---
-R = basket_theta.shape[0]
+T = basket_theta.shape[0]
 n, m = guild[0].shape
 period = len(guild)
 
@@ -34,16 +34,7 @@ def simulate_moment(theta):
     return moment, theta
 
 # 并行化
-# results = Parallel(n_jobs=-1)(delayed(simulate_moment)(basket_theta[t, :]) for t in range(R))
-
-
-results = []
-for t in range(R):
-    theta_t = basket_theta[t, :]
-    moment, theta = simulate_moment(theta_t)
-    results.append((moment, theta))
-    print("cal moment for: ", t)
-
+results = Parallel(n_jobs=-1)(delayed(simulate_moment)(basket_theta[t, :]) for t in range(T))
 
 # 拆分 input 和 label
 input_list, label_list = zip(*results)
@@ -51,7 +42,7 @@ input_array = np.vstack(input_list)
 label_array = np.vstack(label_list)
 
 # train test split
-split_idx = int(0.9 * R)
+split_idx = int(0.9 * T)
 input_train = input_array[:split_idx, :]
 label_train = label_array[:split_idx, :]
 
@@ -66,12 +57,10 @@ label_real = np.full_like(lb, np.nan)
 print(f" Done. Time spent: {time.time() - start_time:.2f} seconds")
 
 save_dict = {
-    # for out-of-sample evaluation
     'input_train': input_train,
     'label_train': label_train,
     'input_test': input_test,
     'label_test': label_test,
-    # for monte carlo (bias-variance analysis)
     'input_real': input_real,
     'label_real': label_real,
     'label_name': label_name,
