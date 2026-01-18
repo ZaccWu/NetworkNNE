@@ -4,6 +4,9 @@ from scipy.sparse import csr_matrix, tril, isspmatrix
 from scipy.sparse import triu as sparse_triu
 from Clustering_global import Clustering_global
 
+from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import shortest_path
+
 def Moments(network, guild):
     n = network[0].shape[0]
     m = guild[0].shape[1]
@@ -47,23 +50,10 @@ def Moments(network, guild):
         fac_friend = num_friend / (deg[:, None] + 1e-12)
         siz_guild = np.ones((n, 1)) * np.sum(L0, axis=0)
 
-        # distances using networkx
-        G = nx.from_numpy_array(Y0)
-        # dist = np.zeros((n, n))
-        # for i in range(n):
-        #     sp = nx.single_source_shortest_path_length(G, i)
-        #     for j, d in sp.items():
-        #         dist[i, j] = d
-
-        lengths = dict(nx.all_pairs_shortest_path_length(G))
-
-        # 转 n×n 矩阵
-        n = G.number_of_nodes()
-        dist = np.zeros((n, n), dtype=float)
-        for i, row in lengths.items():
-            for j, d in row.items():
-                dist[i, j] = d
+        adj = csr_matrix(Y0)
+        dist = shortest_path(adj, method='D', directed=False)  # shape = (n, n)
         dist = 1 - 1 / (1 + dist)
+        #np.fill_diagonal(dist, 0.0)
 
         linkage = dist @ L0 / (siz_guild + 1e-12)
         storage = log_deg[:, None].T @ L0 / (siz_guild + 1e-12)

@@ -4,6 +4,7 @@ from joblib import Parallel, delayed
 import pickle
 from Model import Model
 from Moments import Moments
+from tqdm import tqdm
 
 # ----------------------------
 # LOAD
@@ -34,19 +35,19 @@ def simulate_moment(theta):
     return moment, theta
 
 # 并行化
-# results = Parallel(n_jobs=-1)(delayed(simulate_moment)(basket_theta[t, :]) for t in range(R))
+results = Parallel(n_jobs=-1, verbose=0)(
+              delayed(simulate_moment)(basket_theta[t, :]) for t in tqdm(range(R)))
 
-
-results = []
-for t in range(R):
-    theta_t = basket_theta[t, :]
-    moment, theta = simulate_moment(theta_t)
-    results.append((moment, theta))
-    print("cal moment for: ", t)
+# results = []
+# for t in range(R):
+#     theta_t = basket_theta[t, :]
+#     moment, theta = simulate_moment(theta_t)
+#     results.append((moment, theta))
+#     print("cal moment for: ", t)
 
 
 # 拆分 input 和 label
-input_list, label_list = zip(*results)
+input_list, label_list = zip(*results) # [moments, theta]
 input_array = np.vstack(input_list)
 label_array = np.vstack(label_list)
 
