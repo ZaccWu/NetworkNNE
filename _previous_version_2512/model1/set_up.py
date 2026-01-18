@@ -8,12 +8,12 @@ from Descriptive import Descriptive
 # ----------------------------
 # LOAD / SET-UP
 # ----------------------------
-n = 2511   # num of individual
-m = 537   # num of commutiy
+n = 2511    # num of individual
+m = 537     # num of commutiy
 period = 4
 
-# T = int(1e4)  # number of parameter samples
-T = 10       # 可以用于测试
+# R = int(1e4)  # number of parameter samples
+R = 10       # 可以用于测试
 
 # ----------------------------
 # BOUNDS
@@ -43,9 +43,6 @@ label_name = bounds[:, 3].tolist()
 # network, guild: list of sparse numpy matrix (len=period)
 network, guild = Model(theta, n, m, period)
 
-print(network)
-print(guild)
-
 #moment = Moments(network, guild)
 Descriptive(network, guild)
 
@@ -54,7 +51,7 @@ Descriptive(network, guild)
 print("Sampling parameter basket...")
 start_time = time.time()
 
-basket_theta = np.full((T, len(label_name)), np.nan)
+basket_theta = np.full((R, len(label_name)), np.nan)
 
 # Calculate network density
 # rho = np.count_nonzero(network[0]) / n / (n - 1)
@@ -62,16 +59,18 @@ rho = network[0].sum() / n / (n - 1) # 利用csr matrix的特性计算网络密�
 
 n0, m0 = 500, 100
 
-for t in range(T):
+for t in range(R):
     while True:
         theta_sample = np.random.uniform(lb, ub) # uniform sampling within bounds
         network_simul, guild_simul = Model(theta_sample, n0, m0, 1)
         density = network[0].sum() / n0 / (n0 - 1)
-        print(t, density, rho)
+
         #if rho / 5 < density < rho * 5: # 选择密度在一定初始网络一定范围内的样本
         if rho / 50 < density < rho * 50:  # 选择密度在一定初始网络一定范围内的样本
             basket_theta[t, :] = theta_sample
             break
+    if t%10 == 0:
+        print("Generate sample: ", t)
 
 print(f" Done. Time spent: {time.time() - start_time:.2f} seconds")
 
@@ -81,7 +80,7 @@ save_dict = {
     'label_name': label_name, # parameter name
     'lb': lb,           # parameter lower bound
     'ub': ub,           # parameter upper bound
-    'basket_theta': basket_theta    # true parameter values
+    'basket_theta': basket_theta    # true parameter values (for out-of-sample evaluation)
 }
 
 with open('training_set.pkl', 'wb') as f:

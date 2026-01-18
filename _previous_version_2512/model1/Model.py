@@ -41,8 +41,8 @@ def Model(theta, n, m, period, *args):
         age = np.zeros((n, 1))
 
     # Pre-compute w−w' and g+g'
-    w_diff = np.abs(w - w.R)    # (n, n)
-    g_summ = g + g.R            # (n, n)
+    w_diff = np.abs(w - w.T)    # (n, n)
+    g_summ = g + g.T            # (n, n)
     U_constant = beta0 - beta3 * w_diff + beta4 *  g_summ
 
     # =====================================================
@@ -58,7 +58,7 @@ def Model(theta, n, m, period, *args):
         log_deg = np.log1p(deg)
 
         # Guild statistics
-        same_guild = L0 @ L0.R                   # (n, m) × (m, n) -> (n, n)
+        same_guild = L0 @ L0.T                  # (n, m) × (m, n) -> (n, n)
         num_friend = Y0 @ L0                     # (n, n) × (n, m) -> (n, m)
         fac_friend = num_friend / (deg + 1e-15)
         siz_guild = np.ones((n, 1)) @ np.sum(L0, axis=0, keepdims=True)
@@ -70,7 +70,7 @@ def Model(theta, n, m, period, *args):
             beta1 * Y0
             + beta2 * same_guild
             + U_constant
-            - beta5 * (log_deg + log_deg.R)
+            - beta5 * (log_deg + log_deg.T)
         )
 
         # Screening sets i, j (lower triangular)
@@ -103,7 +103,7 @@ def Model(theta, n, m, period, *args):
         #  Guild choice U for each node
         # ---------------------------------------------------
         w_avg_diff = (w_diff @ L0) / (siz_guild + 1e-15)   # (n, n) × (n, m) -> (n, m)
-        g_avg = (g.R @ L0) / (siz_guild + 1e-15)           # (1, n) × (n, m) -> (1, m)
+        g_avg = (g.T @ L0) / (siz_guild + 1e-15)           # (1, n) × (n, m) -> (1, m)
 
         U = (
             gamma1 * L0

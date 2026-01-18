@@ -29,9 +29,9 @@ input_real = data['input_real']
 lb, ub = data['lb'], data['ub']
 label_name = data['label_name']
 
-T_train = input_train.shape[0]
-T_test = input_test.shape[0]
-T = T_train + T_test
+R_train = input_train.shape[0]
+R_test = input_test.shape[0]
+R = R_train + R_test
 M = input_train.shape[1]
 L = label_train.shape[1]
 
@@ -40,8 +40,8 @@ batch_size = 256
 
 if learn_standard_error:
     # 扩展标签以学习标准误
-    label_train = np.hstack([label_train, np.zeros((T_train, L))])
-    label_test = np.hstack([label_test, np.zeros((T_test, L))])
+    label_train = np.hstack([label_train, np.zeros((R_train, L))])
+    label_test = np.hstack([label_test, np.zeros((R_test, L))])
     output_dim = 2 * L
 else:
     output_dim = L
@@ -132,3 +132,6 @@ theta = np.clip(temp[:L], lb, ub)
 # 正向变换标准误（如果学习）
 if learn_standard_error:
     se = Positive_transform(temp[L:2 * L])
+
+print(theta)
+print(se)

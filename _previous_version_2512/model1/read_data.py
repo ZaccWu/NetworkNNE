@@ -42,7 +42,7 @@ for p in range(period):
 
     # 检查是否对称且只包含0/1
     unique_vals = np.unique(Y)
-    if not np.allclose(Y, Y.R) or not np.array_equal(unique_vals, [0, 1]):
+    if not np.allclose(Y, Y.T) or not np.array_equal(unique_vals, [0, 1]):
         raise ValueError("wrong data type.")
 
     # 转为逻辑稀疏矩阵

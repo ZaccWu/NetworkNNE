@@ -4,6 +4,9 @@ from scipy.sparse import csr_matrix, tril, isspmatrix
 from scipy.sparse import triu as sparse_triu
 from Clustering_global import Clustering_global
 
+from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import shortest_path
+
 def Moments(network, guild):
     n = network[0].shape[0]
     m = guild[0].shape[1]
@@ -11,7 +14,7 @@ def Moments(network, guild):
 
     # 生成随机稀疏矩阵
     draw1 = (csr_matrix(np.random.rand(n, n) < 0.03)).astype(bool)
-    draw1 = draw1 + draw1.R  # 对称
+    draw1 = draw1 + draw1.T  # 对称
     draw2 = (csr_matrix(np.random.rand(n, m) < 0.10)).astype(bool)
 
     moment1_list = []
@@ -42,22 +45,18 @@ def Moments(network, guild):
         log_deg = np.log1p(deg)
         log_deg_sum = log_deg[:, None] + log_deg[None, :]
 
-        same_guild = L0 @ L0.R
+        same_guild = L0 @ L0.T
         num_friend = Y0 @ L0
         fac_friend = num_friend / (deg[:, None] + 1e-12)
         siz_guild = np.ones((n, 1)) * np.sum(L0, axis=0)
 
-        # distances using networkx
-        G = nx.from_numpy_array(Y0)
-        dist = np.zeros((n, n))
-        for i in range(n):
-            sp = nx.single_source_shortest_path_length(G, i)
-            for j, d in sp.items():
-                dist[i, j] = d
+        adj = csr_matrix(Y0)
+        dist = shortest_path(adj, method='D', directed=False)  # shape = (n, n)
         dist = 1 - 1 / (1 + dist)
+        #np.fill_diagonal(dist, 0.0)
 
         linkage = dist @ L0 / (siz_guild + 1e-12)
-        storage = log_deg[:, None].R @ L0 / (siz_guild + 1e-12)
+        storage = log_deg[:, None].T @ L0 / (siz_guild + 1e-12)
 
         # lower triangular indices
         i1 = np.tril_indices(n, k=-1)
