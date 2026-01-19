@@ -1,5 +1,4 @@
 import numpy as np
-import networkx as nx
 from scipy.sparse import csr_matrix, tril, isspmatrix
 from scipy.sparse import triu as sparse_triu
 from Clustering_global import Clustering_global
@@ -7,7 +6,59 @@ from Clustering_global import Clustering_global
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import shortest_path
 
-def Moments(network, guild):
+# calculate data moments of Peer Model DGP
+def PeerMoments(network):
+    n = network[0].shape[0]
+    period = len(network)
+    draw1 = (csr_matrix(np.random.rand(n, n) < 0.03)).astype(bool) # 生成随机稀疏矩阵
+    draw1 = draw1 + draw1.T  # 对称
+    moment1_list, moment2_list = [], []
+
+    # --- moment1: period-wise statistics ---
+    for p in range(period):
+        Y = network[p]
+        deg = np.array(Y.sum(axis=1).A1).flatten()  # 求和+转成 长度 n 的一维 numpy array
+        moment1 = np.array([
+            np.mean(deg),
+            np.var(deg),
+            Clustering_global(Y)[0],
+        ])
+        moment1_list.append(moment1)
+
+    # --- moment2: cross-period statistics ---
+    for p in range(1, period):
+        Y0 = network[p - 1].toarray() if isspmatrix(network[p - 1]) else network[p - 1]
+        Y = network[p].toarray() if isspmatrix(network[p]) else network[p]
+        deg = np.sum(Y0, axis=1)
+        log_deg = np.log1p(deg)
+        log_deg_sum = log_deg[:, None] + log_deg[None, :]
+
+        adj = csr_matrix(Y0)
+        dist = shortest_path(adj, method='D', directed=False)  # shape = (n, n)
+        dist = 1 - 1 / (1 + dist)
+
+        # lower triangular indices
+        i1 = np.tril_indices(n, k=-1)
+        D1 = np.column_stack([Y0[i1], dist[i1], log_deg_sum[i1]])
+
+        A2 = Y.astype(int)
+        B2 = draw1.toarray().astype(int) if isspmatrix(draw1) else draw1.astype(int)
+        i2 = np.tril((A2-B2).astype(bool), k=-1)
+        D2 = np.column_stack([Y0[i2], dist[i2], log_deg_sum[i2]])
+
+        moment2 = Stat(D1, D2)
+        moment2_list.append(moment2)
+
+    # 合并 moment1, moment2
+    moment1_array = np.vstack(moment1_list)
+    moment2_array = np.mean(np.vstack(moment2_list), axis=0)
+
+    moment = np.hstack([moment1_array.flatten(), moment2_array])
+
+    return moment
+
+# calculate data moments of Mix Model DGP
+def MixMoments(network, guild):
     n = network[0].shape[0]
     m = guild[0].shape[1]
     period = len(guild)

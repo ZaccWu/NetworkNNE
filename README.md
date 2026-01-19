@@ -6,11 +6,11 @@ The software and data in this repository are the materials used in xxx.
 
 We highly recommend using `Conda` for installing requirements and implementation (an open-source package and environment management system for `Python`). For installing `Conda`, please refer to the website https://www.anaconda.com/products/distribution. To ensure that the code runs successfully, the following dependencies need to be installed:
 
-> python 3.8.17 \
-> numpy 1.24.4 \
-> pytorch 1.13.1 \
-> scipy 1.10.1 \
-> scikit-learn 1.3.0 \
+> python 3.13 \
+> numpy 2.4.1 \
+> pytorch 2.8.0 \
+> scipy 1.17.0 \
+> scikit-learn 1.8.0 \
 
 
 <span style="color:red">！This code is on developed for more user-friendly and extended to more interesting configurations.</span>

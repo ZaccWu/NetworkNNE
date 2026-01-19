@@ -2,83 +2,111 @@ import numpy as np
 import time
 from joblib import Parallel, delayed
 import pickle
-from Model import Model
-from Moments import Moments
+from Model import PeerModel, MixModel
+from Moments import PeerMoments, MixMoments
 from tqdm import tqdm
-
-# ----------------------------
-# LOAD
-# ----------------------------
-with open('training_set.pkl', 'rb') as f:  # data from "set_up.py"
-    data = pickle.load(f)
+import sys
+import argparse
+import warnings
+warnings.filterwarnings("ignore")
 
 
-basket_theta = data['basket_theta']
-guild = data['guild']
-network = data['network']
-lb = data['lb']
-ub = data['ub']
-label_name = data['label_name']
-
-print("Simulating training data...")
-start_time = time.time()
-
-# --- SETUP ---
-R = basket_theta.shape[0]
-n, m = guild[0].shape
-period = len(guild)
+parser = argparse.ArgumentParser('nneGen')
+# 'peer' or 'peer+community'
+parser.add_argument('--mod', type=str, help='model type', default='peer')
 
 
-def simulate_moment(theta):
-    network_simul, guild_simul = Model(theta, n, m, period)
-    moment = Moments(network_simul, guild_simul)
+try:
+    args = parser.parse_args()
+except:
+    parser.print_help()
+    sys.exit(0)
+
+
+def simulate_moment(mod, econmodel, theta):
+    if mod == 'peer':
+        network_simul = econmodel.get_data(theta)
+        moment = PeerMoments(network_simul)
+    else:
+        network_simul, guild_simul = econmodel.get_data(theta)
+        moment = MixMoments(network_simul, guild_simul)
     return moment, theta
 
-# 并行化
-results = Parallel(n_jobs=-1, verbose=0)(
-              delayed(simulate_moment)(basket_theta[t, :]) for t in tqdm(range(R)))
 
-# results = []
-# for t in range(R):
-#     theta_t = basket_theta[t, :]
-#     moment, theta = simulate_moment(theta_t)
-#     results.append((moment, theta))
-#     print("cal moment for: ", t)
+def nne_gen(data):
+    if args.mod == 'peer':
+        basket_theta = data['basket_theta']
+        network = data['network']
+        lb = data['lb']
+        ub = data['ub']
+        label_name = data['label_name']
+        n = network[0].shape[0]
+        period = len(network)
+        econmodel = PeerModel(n, period)
+    else:
+        basket_theta = data['basket_theta']
+        guild = data['guild']
+        network = data['network']
+        lb = data['lb']
+        ub = data['ub']
+        label_name = data['label_name']
+        n, m = guild[0].shape
+        period = len(guild)
+        econmodel = MixModel(n, m, period)
+
+    print("Simulating training data...")
+    start_time = time.time()
+
+    R = basket_theta.shape[0]
+    results = Parallel(n_jobs=-1, verbose=0)(
+                  delayed(simulate_moment)(args.mod, econmodel, basket_theta[t, :]) for t in tqdm(range(R))
+    )     # for parallel computing
 
 
-# 拆分 input 和 label
-input_list, label_list = zip(*results) # [moments, theta]
-input_array = np.vstack(input_list)
-label_array = np.vstack(label_list)
+    # 拆分 input 和 label
+    input_list, label_list = zip(*results) # [moments, theta]
+    input_array = np.vstack(input_list)
+    label_array = np.vstack(label_list)
 
-# train test split
-split_idx = int(0.9 * R)
-input_train = input_array[:split_idx, :]
-label_train = label_array[:split_idx, :]
+    # train test split
+    split_idx = int(0.9 * R)
+    input_train = input_array[:split_idx, :]
+    label_train = label_array[:split_idx, :]
 
-input_test = input_array[split_idx:, :]
-label_test = label_array[split_idx:, :]
+    input_test = input_array[split_idx:, :]
+    label_test = label_array[split_idx:, :]
 
-# --- REAL DATA ---
-moment_real = Moments(network, guild)
-input_real = moment_real
-label_real = np.full_like(lb, np.nan)
+    # recall 'real' data
+    if args.mod == 'peer':
+        moment_real = PeerMoments(network)
+    else:
+        moment_real = MixMoments(network, guild)
 
-print(f" Done. Time spent: {time.time() - start_time:.2f} seconds")
+    input_real = moment_real
+    label_real = np.full_like(lb, np.nan)
+    print(f" Done. Time spent: {time.time() - start_time:.2f} seconds")
 
-save_dict = {
-    # for out-of-sample evaluation
-    'input_train': input_train,
-    'label_train': label_train,
-    'input_test': input_test,
-    'label_test': label_test,
-    # for monte carlo (bias-variance analysis)
-    'input_real': input_real,
-    'label_real': label_real,
-    'label_name': label_name,
-    'ub': ub,
-    'lb': lb
-}
+    save_dict = {
+        # for out-of-sample evaluation
+        'input_train': input_train,
+        'label_train': label_train,
+        'input_test': input_test,
+        'label_test': label_test,
+        # for monte carlo (bias-variance analysis)
+        'input_real': input_real,
+        'label_real': label_real,
+        'label_name': label_name,
+        'ub': ub,
+        'lb': lb
+    }
+    return save_dict
 
-with open('training_set_gen.pkl', 'wb') as f:
-    pickle.dump(save_dict, f)
+
+
+
+if __name__ == "__main__":
+    with open('training_set.pkl', 'rb') as f:  # data from "set_up.py"
+        data = pickle.load(f)
+    save_dict = nne_gen(data)
+    with open('training_set_gen.pkl', 'wb') as f:
+        pickle.dump(save_dict, f)

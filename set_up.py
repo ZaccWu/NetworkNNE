@@ -1,87 +1,143 @@
 import numpy as np
 import time
 import pickle
-from Model import Model
-from Moments import Moments
-from Descriptive import Descriptive
-
-# ----------------------------
-# LOAD / SET-UP
-# ----------------------------
-n = 2511    # num of individual
-m = 537     # num of commutiy
-period = 4
-
-# R = int(1e4)  # number of parameter samples
-R = 10       # 可以用于测试
-
-# ----------------------------
-# BOUNDS
-# ----------------------------
-bounds = [
-    [-6.5, -10, -5, r'\beta_0'],  # lambda
-    [12, 5, 15, r'\beta_1'],  # alpha
-    [6, 0, 10, r'\beta_2'],  # beta
-    [4, 0, 10, r'\beta_3'],  # delta
-    [0.75, 0, 1, r'\beta_4'],  # theta
-    [0.25, 0, 1, r'\beta_5'],  # gamma
-    [9, 5, 10, r'\gamma_1'],  # alpha
-    [2.5, 0, 5, r'\gamma_2'],  # beta
-    [1.5, 0, 5, r'\gamma_3'],  # delta
-    [3.5, 0, 5, r'\gamma_4'],  # theta
-    [4, 1, 5, r'\tau']  # tau
-]
-
-bounds = np.array(bounds, dtype=object)
-theta = bounds[:, 0].astype(float)
-lb = bounds[:, 1].astype(float)
-ub = bounds[:, 2].astype(float)
-label_name = bounds[:, 3].tolist()
+from Model import PeerModel, MixModel
+from Descriptive import PeerDataDescriptive, MixDataDescriptive
+import sys
+import argparse
+import warnings
+warnings.filterwarnings("ignore")
 
 
-# --- SIMULATE "REAL DATA" ---
-# network, guild: list of sparse numpy matrix (len=period)
-network, guild = Model(theta, n, m, period)
+parser = argparse.ArgumentParser('SetUp')
+# 'peer' or 'peer+community'
+parser.add_argument('--mod', type=str, help='model type', default='peer')
+parser.add_argument('--r', type=int, help='model type', default=1000) # number of parameter sample (default: 1e4, try: 10~1e3)
 
-#moment = Moments(network, guild)
-Descriptive(network, guild)
+try:
+    args = parser.parse_args()
+except:
+    parser.print_help()
+    sys.exit(0)
+
+def set_seed(seed):
+    np.random.seed(seed)
 
 
-# --- PARAMETER BASKET ---
-print("Sampling parameter basket...")
-start_time = time.time()
 
-basket_theta = np.full((R, len(label_name)), np.nan)
+def set_beta(mod):
+    if mod == 'peer':
+        bounds = [
+            [-6.5, -10, -5, r'\lambda_f'],
+            [12, 5, 15, r'\alpha_f'],
+            [6, 0, 10, r'\beta_f'],  # beta
+            [4, 0, 10, r'\delta_f'],  # delta
+            [0.75, 0, 1, r'\theta_f'],  # theta
+            [0.25, 0, 1, r'\gamma_f'],  # gamma
+            [4, 1, 5, r'\tau']  # tau
+        ]
+        return bounds
 
-# Calculate network density
-# rho = np.count_nonzero(network[0]) / n / (n - 1)
-rho = network[0].sum() / n / (n - 1) # 利用csr matrix的特性计算网络密度
+    else:
+        bounds = [
+            [-6.5, -10, -5, r'\beta_0'],  # lambda
+            [12, 5, 15, r'\beta_1'],  # alpha
+            [6, 0, 10, r'\beta_2'],  # beta
+            [4, 0, 10, r'\beta_3'],  # delta
+            [0.75, 0, 1, r'\beta_4'],  # theta
+            [0.25, 0, 1, r'\beta_5'],  # gamma
+            [9, 5, 10, r'\gamma_1'],  # alpha
+            [2.5, 0, 5, r'\gamma_2'],  # beta
+            [1.5, 0, 5, r'\gamma_3'],  # delta
+            [3.5, 0, 5, r'\gamma_4'],  # theta
+            [4, 1, 5, r'\tau']  # tau
+        ]
 
-n0, m0 = 500, 100
+        return bounds
 
-for t in range(R):
-    while True:
-        theta_sample = np.random.uniform(lb, ub) # uniform sampling within bounds
-        network_simul, guild_simul = Model(theta_sample, n0, m0, 1)
-        density = network[0].sum() / n0 / (n0 - 1)
 
-        #if rho / 5 < density < rho * 5: # 选择密度在一定初始网络一定范围内的样本
-        if rho / 50 < density < rho * 50:  # 选择密度在一定初始网络一定范围内的样本
-            basket_theta[t, :] = theta_sample
-            break
-    if t%10 == 0:
-        print("Generate sample: ", t)
+def set_up():
+    R = args.r       # 测试时可减少样本量
+    bounds = set_beta(args.mod)
 
-print(f" Done. Time spent: {time.time() - start_time:.2f} seconds")
+    bounds = np.array(bounds, dtype=object)
+    theta = bounds[:, 0].astype(float)
+    lb = bounds[:, 1].astype(float)
+    ub = bounds[:, 2].astype(float)
+    label_name = bounds[:, 3].tolist()
 
-save_dict = {
-    'network': network, # csr sparse matrix
-    'guild': guild,     # csr sparse matrix
-    'label_name': label_name, # parameter name
-    'lb': lb,           # parameter lower bound
-    'ub': ub,           # parameter upper bound
-    'basket_theta': basket_theta    # true parameter values (for out-of-sample evaluation)
-}
+    # simulate 'real_data'
+    if args.mod == 'peer':
+        n = 2511  # num of individual
+        period = 4
+        econmodel = PeerModel(n, period)  # network: list of sparse numpy matrix (len=period)
+        network = econmodel.get_data(theta)
+        PeerDataDescriptive(network)
 
-with open('training_set.pkl', 'wb') as f:
-    pickle.dump(save_dict, f)
+    else:
+        n = 2511  # num of individual
+        m = 537
+        period = 4
+        econmodel = MixModel(n, m, period) # network, guild: list of sparse numpy matrix (len=period)
+        network, guild = econmodel.get_data(theta)
+        MixDataDescriptive(network, guild)
+
+
+    # --- PARAMETER BASKET ---
+    print("Sampling parameter basket...")
+    start_time = time.time()
+
+    basket_theta = np.full((R, len(label_name)), np.nan)
+
+    # Calculate network density
+    # rho = np.count_nonzero(network[0]) / n / (n - 1)
+    rho = network[0].sum() / n / (n - 1) # 利用csr matrix的特性计算网络密度
+
+    n0, m0 = 500, 100
+    for t in range(R):
+        while True:
+            theta_sample = np.random.uniform(lb, ub) # uniform sampling within bounds
+            if args.mod == 'peer':
+                econmodel = PeerModel(n0, period=1)
+                network_simul = econmodel.get_data(theta_sample)
+            else:
+                econmodel = MixModel(n0, m0, period=1)
+                network_simul, guild_simul = econmodel.get_data(theta_sample)
+
+            density = network[0].sum() / n0 / (n0 - 1)
+            #if rho / 5 < density < rho * 5:
+            if rho / 50 < density < rho * 50:  # 选择密度在一定初始网络一定范围内的样本
+                basket_theta[t, :] = theta_sample
+                break
+        if t%10 == 0:
+            print("Generate sample: ", t)
+
+    print(f" Done. Time spent: {time.time() - start_time:.2f} seconds")
+
+    if args.mod == 'peer':
+        save_dict = {
+            'network': network, # csr sparse matrix
+            'label_name': label_name, # parameter name
+            'lb': lb,           # parameter lower bound
+            'ub': ub,           # parameter upper bound
+            'basket_theta': basket_theta    # true parameter values (for out-of-sample evaluation)
+        }
+
+    else:
+        save_dict = {
+            'network': network, # csr sparse matrix
+            'guild': guild,     # csr sparse matrix
+            'label_name': label_name, # parameter name
+            'lb': lb,           # parameter lower bound
+            'ub': ub,           # parameter upper bound
+            'basket_theta': basket_theta    # true parameter values (for out-of-sample evaluation)
+        }
+
+    return save_dict
+
+
+if __name__ == "__main__":
+    set_seed(101)
+    save_dict = set_up()
+    with open('training_set.pkl', 'wb') as f:
+        pickle.dump(save_dict, f)
