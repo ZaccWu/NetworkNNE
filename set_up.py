@@ -20,10 +20,6 @@ except:
     parser.print_help()
     sys.exit(0)
 
-def set_seed(seed):
-    np.random.seed(seed)
-
-
 
 def set_beta(mod):
     if mod == 'peer':
@@ -104,11 +100,13 @@ def set_up():
                 econmodel = MixModel(n0, m0, period=1)
                 network_simul, guild_simul = econmodel.get_data(theta_sample)
 
-            density = network[0].sum() / n0 / (n0 - 1)
+            density = network_simul[0].sum() / n0 / (n0 - 1)
+
             #if rho / 5 < density < rho * 5:
             if rho / 50 < density < rho * 50:  # 选择密度在一定初始网络一定范围内的样本
                 basket_theta[t, :] = theta_sample
                 break
+
         if t%10 == 0:
             print("Generate sample: ", t)
 
@@ -137,7 +135,6 @@ def set_up():
 
 
 if __name__ == "__main__":
-    set_seed(101)
     save_dict = set_up()
     with open('training_set.pkl', 'wb') as f:
         pickle.dump(save_dict, f)

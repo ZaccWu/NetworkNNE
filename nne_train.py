@@ -79,9 +79,9 @@ def nne_train(data):
                                   torch.tensor(label_train, dtype=torch.float32))
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 
-    val_dataset = TensorDataset(torch.tensor(input_test, dtype=torch.float32),
-                                torch.tensor(label_test, dtype=torch.float32))
-    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
+    # val_dataset = TensorDataset(torch.tensor(input_test, dtype=torch.float32),
+    #                             torch.tensor(label_test, dtype=torch.float32))
+    # val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
     net = NeuralNet(M, args.num_nodes, output_dim, args.learn_standard_error)
 
 
