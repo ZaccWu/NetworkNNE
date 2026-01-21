@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from Positive_transform import Positive_transform
+from sklearn.preprocessing import StandardScaler
 import pickle
 from Test_error_summary import Test_error_summary
 import sys
@@ -47,7 +48,7 @@ class NeuralNet(nn.Module):
             nn.ELU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ELU(),
-            nn.Linear(hidden_dim, output_dim)
+            nn.Linear(hidden_dim, output_dim),
         )
 
     def forward(self, x):
@@ -73,6 +74,9 @@ def nne_train(data):
     else:
         output_dim = L
 
+    scaler = StandardScaler()
+    input_train, input_test = scaler.fit_transform(input_train), scaler.fit_transform(input_test)
+    input_real = scaler.fit_transform(input_real.reshape(1, -1))
 
     # Dataset and DataLoader
     train_dataset = TensorDataset(torch.tensor(input_train, dtype=torch.float32),
@@ -91,7 +95,7 @@ def nne_train(data):
     optimizer = optim.Adam(net.parameters(), lr=args.initial_lr)
 
     # Optional: learning rate scheduler similar to MATLAB piecewise schedule
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=40, gamma=0.1)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=40, gamma=0.1) # 40, 0.1
 
     for epoch in range(args.max_epochs):
         net.train()
@@ -124,7 +128,7 @@ def nne_train(data):
     # Estimate on original data
     net.eval()
     with torch.no_grad():
-        temp = net(torch.tensor(input_real, dtype=torch.float32)).numpy()
+        temp = net(torch.tensor(input_real.squeeze(0), dtype=torch.float32)).numpy()
 
     # 截断 theta
     theta = np.clip(temp[:L], lb, ub)

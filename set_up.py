@@ -26,7 +26,7 @@ def set_beta(mod):
         bounds = [
             [-6.5, -10, -5, r'\lambda_f'],
             [12, 5, 15, r'\alpha_f'],
-            [0.4, 0, 1, r'\beta_f'],  # beta
+            [1, 0, 2, r'\beta_f'],  # beta
             [4, 0, 10, r'\delta_f'],  # delta
             [0.75, 0, 1, r'\theta_f'],  # theta
             [0.25, 0, 1, r'\gamma_f'],  # gamma
