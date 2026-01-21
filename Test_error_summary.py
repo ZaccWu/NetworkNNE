@@ -28,8 +28,8 @@ def Test_error_summary(input_test, label_test, label_name, net, figure=True, tab
         Error for standard deviation predictions (if applicable)
     """
 
-    n, k = label_test.shape # num of samples, num of parameters
-    m = len(label_name)     # num of parameter
+    n, k = label_test.shape # num of samples, num of output_dim
+    m = len(label_name)     # num of parameters
 
     # Determine label mode
     if m == k:

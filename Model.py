@@ -25,10 +25,12 @@ class PeerModel():
         # Random initial w, g
         w = np.random.randn(self.n, 1)
         g = np.random.randn(self.n, 1)
+        x = np.random.randn(self.n, 1)
 
         # Pre-compute w−w' and g+g'
         w_diff = np.abs(w - w.T)    # (n, n)
         g_summ = g + g.T            # (n, n)
+        x_diff = np.abs(x - x.T)  # (n, n)
         U_constant = self.beta0 - self.beta3 * w_diff + self.beta4 *  g_summ
 
         #  Main loop: simulate from p = 2 : tau+period
@@ -41,12 +43,13 @@ class PeerModel():
             #  Compute U for network linking
             U = (
                 self.beta1 * Y0
-                #+ beta2 * same_guild
+                - self.beta2 * x_diff
                 + U_constant
                 - self.beta5 * (log_deg + log_deg.T)
             )
 
-            i = np.tril(U > -4.5951, -1) # Screening sets i, j (lower triangular)
+            #i = np.tril(U > -4.5951, -1) # Screening sets i, j (lower triangular)
+            i = np.tril(U > -11.5951, -1)  # Screening sets i, j (lower triangular)
             density = poisson.rvs(self.n**2 * 0.01) / (self.n**2) # sprandsym equivalent
             j_rand = sp.rand(self.n, self.n, density)
             j = np.tril((j_rand != 0).toarray(), -1)

@@ -109,10 +109,10 @@ def nne_train(data):
         net.eval()
         with torch.no_grad():
             test_preds = net(torch.tensor(input_test, dtype=torch.float32))
-            loss = criterion(test_preds, torch.tensor(label_test, dtype=torch.float32))
+            loss_va = criterion(test_preds, torch.tensor(label_test, dtype=torch.float32))
 
         if args.disp_iter:
-            print(f"Epoch {epoch + 1}/{args.max_epochs}, Train Loss: {loss.item():.4f}, Val Loss: {loss.item():.4f}")
+            print(f"Epoch {epoch + 1}/{args.max_epochs}, Train Loss: {loss.item():.4f}, Val Loss: {loss_va.item():.4f}")
 
 
     if args.disp_test_summary:
