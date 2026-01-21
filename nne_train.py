@@ -20,10 +20,10 @@ parser = argparse.ArgumentParser('nneTrain')
 # 'peer' or 'peer+community'
 parser.add_argument('--mod', type=str, help='model type', default='peer')
 # neural network algorithm/training settings
-parser.add_argument('--num_nodes', type=int, help='layer width', default=128)
-parser.add_argument('--batch_size', type=int, help='training sample batch', default=256)
-parser.add_argument('--max_epochs', type=int, help='training epoches', default=100)
-parser.add_argument('--initial_lr', type=int, help='initial learning rate', default=0.01)
+parser.add_argument('--num_nodes', type=int, help='layer width', default=128)   # 128
+parser.add_argument('--batch_size', type=int, help='training sample batch', default=256)    # 256
+parser.add_argument('--max_epochs', type=int, help='training epoches', default=100)         # 100
+parser.add_argument('--initial_lr', type=int, help='initial learning rate', default=0.01)   # 0.01
 
 # display settings
 parser.add_argument('--disp_test_summary', type=bool, help='display test summary', default=True)
@@ -105,16 +105,21 @@ def nne_train(data):
 
         scheduler.step()
 
-        if args.disp_iter:
-            print(f"Epoch {epoch + 1}/{args.max_epochs}, Loss: {loss.item():.4f}")
-
     # Validation / Test summary (optional)
+        net.eval()
+        with torch.no_grad():
+            test_preds = net(torch.tensor(input_test, dtype=torch.float32))
+            loss = criterion(test_preds, torch.tensor(label_test, dtype=torch.float32))
+
+        if args.disp_iter:
+            print(f"Epoch {epoch + 1}/{args.max_epochs}, Train Loss: {loss.item():.4f}, Val Loss: {loss.item():.4f}")
+
+
     if args.disp_test_summary:
         net.eval()
         with torch.no_grad():
             test_preds = net(torch.tensor(input_test, dtype=torch.float32))
-        # 调用自定义 Test_error_summary 函数或写可视化/表格代码
-        Test_error_summary(torch.tensor(input_test, dtype=torch.float32), label_test, label_name, net, figure=args.display_fig, table=1)
+            Test_error_summary(torch.tensor(input_test, dtype=torch.float32), label_test, label_name, net, figure=args.display_fig, table=1)
 
     # Estimate on original data
     net.eval()
