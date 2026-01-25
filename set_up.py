@@ -1,7 +1,7 @@
 import numpy as np
 import time
 import pickle
-from Model import PeerModel, MixModel
+from Model import SimplePeerModel, PeerModelwithFeature, MixModel
 from Descriptive import PeerDataDescriptive, MixDataDescriptive
 import sys
 import argparse
@@ -11,8 +11,8 @@ warnings.filterwarnings("ignore")
 
 parser = argparse.ArgumentParser('SetUp')
 # 'peer' or 'peer+community'
-parser.add_argument('--mod', type=str, help='model type', default='peer')
-parser.add_argument('--r', type=int, help='model type', default=1000) # number of parameter sample (default: 1e4, try: 10~1e3)
+parser.add_argument('--mod', type=str, help='model type', default='peerf') # speer, peerf, mix
+parser.add_argument('--r', type=int, help='model type', default=10) # number of parameter sample (default: 1e4, try: 10~1e3)
 
 try:
     args = parser.parse_args()
@@ -22,7 +22,18 @@ except:
 
 
 def set_beta(mod):
-    if mod == 'peer':
+    if mod == 'speer': # simple peer model
+        bounds = [
+            [-6.5, -10, -5, r'\lambda_f'],
+            [12, 5, 15, r'\alpha_f'],
+            [4, 0, 10, r'\delta_f'],  # delta
+            [0.75, 0, 1, r'\theta_f'],  # theta
+            [0.25, 0, 1, r'\gamma_f'],  # gamma
+            [4, 1, 5, r'\tau']  # tau
+        ]
+        return bounds
+
+    elif mod == 'peerf': # peer model with features
         bounds = [
             [-6.5, -10, -5, r'\lambda_f'],
             [12, 5, 15, r'\alpha_f'],
@@ -34,7 +45,7 @@ def set_beta(mod):
         ]
         return bounds
 
-    else:
+    elif mod == 'mix': # mixed model (peer + community)
         bounds = [
             [-6.5, -10, -5, r'\beta_0'],  # lambda
             [12, 5, 15, r'\beta_1'],  # alpha
@@ -48,8 +59,10 @@ def set_beta(mod):
             [3.5, 0, 5, r'\gamma_4'],  # theta
             [4, 1, 5, r'\tau']  # tau
         ]
-
         return bounds
+
+    else:
+        raise ValueError("Model Not Specified")
 
 
 def set_up():
@@ -63,11 +76,15 @@ def set_up():
     label_name = bounds[:, 3].tolist()
 
     # simulate 'real_data'
-    if args.mod == 'peer':
+    if args.mod in ['speer', 'peerf']:
         n = 2511  # num of individual
         period = 4
-        econmodel = PeerModel(n, period)  # network: list of sparse numpy matrix (len=period)
-        network = econmodel.get_data(theta)
+        if args.mod == 'speer':
+            econmodel = SimplePeerModel(n, period)  # network: list of sparse numpy matrix (len=period)
+            network = econmodel.get_data(theta)
+        else:
+            econmodel = PeerModelwithFeature(n, period)
+            network, _ = econmodel.get_data(theta)
         PeerDataDescriptive(network)
 
     else:
@@ -93,9 +110,12 @@ def set_up():
     for t in range(R):
         while True:
             theta_sample = np.random.uniform(lb, ub) # uniform sampling within bounds
-            if args.mod == 'peer':
-                econmodel = PeerModel(n0, period=1)
+            if args.mod == 'speer':
+                econmodel = SimplePeerModel(n0, period=1)
                 network_simul = econmodel.get_data(theta_sample)
+            elif args.mod == 'peerf':
+                econmodel = PeerModelwithFeature(n0, period=1)
+                network_simul, feature_simul = econmodel.get_data(theta_sample)
             else:
                 econmodel = MixModel(n0, m0, period=1)
                 network_simul, guild_simul = econmodel.get_data(theta_sample)
@@ -112,9 +132,19 @@ def set_up():
 
     print(f" Done. Time spent: {time.time() - start_time:.2f} seconds")
 
-    if args.mod == 'peer':
+    if args.mod == 'speer':
         save_dict = {
             'network': network, # csr sparse matrix
+            'label_name': label_name, # parameter name
+            'lb': lb,           # parameter lower bound
+            'ub': ub,           # parameter upper bound
+            'basket_theta': basket_theta    # true parameter values (for out-of-sample evaluation)
+        }
+
+    elif args.mod == 'peerf':
+        save_dict = {
+            'network': network, # csr sparse matrix
+            'feature': feature_simul,
             'label_name': label_name, # parameter name
             'lb': lb,           # parameter lower bound
             'ub': ub,           # parameter upper bound

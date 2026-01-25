@@ -2,8 +2,8 @@ import numpy as np
 import time
 from joblib import Parallel, delayed
 import pickle
-from Model import PeerModel, MixModel
-from Moments import PeerMoments, MixMoments
+from Model import SimplePeerModel, PeerModelwithFeature, MixModel
+from Moments import SimplePeerMoments, PeerFeatureMoments, MixMoments
 from tqdm import tqdm
 import sys
 import argparse
@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 
 parser = argparse.ArgumentParser('nneGen')
 # 'peer' or 'peer+community'
-parser.add_argument('--mod', type=str, help='model type', default='peer')
+parser.add_argument('--mod', type=str, help='model type', default='peerf') # speer, peerf, mix
 
 
 try:
@@ -24,9 +24,12 @@ except:
 
 
 def simulate_moment(mod, econmodel, theta):
-    if mod == 'peer':
+    if mod == 'peerf':
+        network_simul, feature_simul = econmodel.get_data(theta)
+        moment = PeerFeatureMoments(network_simul, feature_simul)
+    elif mod == 'speer':
         network_simul = econmodel.get_data(theta)
-        moment = PeerMoments(network_simul)
+        moment = SimplePeerMoments(network_simul)
     else:
         network_simul, guild_simul = econmodel.get_data(theta)
         moment = MixMoments(network_simul, guild_simul)
@@ -34,7 +37,7 @@ def simulate_moment(mod, econmodel, theta):
 
 
 def nne_gen(data):
-    if args.mod == 'peer':
+    if args.mod == 'speer':
         basket_theta = data['basket_theta']
         network = data['network']
         lb = data['lb']
@@ -42,8 +45,18 @@ def nne_gen(data):
         label_name = data['label_name']
         n = network[0].shape[0]
         period = len(network)
-        econmodel = PeerModel(n, period)
-    else:
+        econmodel = SimplePeerModel(n, period)
+    elif args.mod == 'peerf':
+        basket_theta = data['basket_theta']
+        network = data['network']
+        feature = data['feature']
+        lb = data['lb']
+        ub = data['ub']
+        label_name = data['label_name']
+        n = network[0].shape[0]
+        period = len(network)
+        econmodel = PeerModelwithFeature(n, period)
+    elif args.mod == 'mix':
         basket_theta = data['basket_theta']
         guild = data['guild']
         network = data['network']
@@ -53,6 +66,8 @@ def nne_gen(data):
         n, m = guild[0].shape
         period = len(guild)
         econmodel = MixModel(n, m, period)
+    else:
+        raise ValueError("Model Not Specified")
 
     print("Simulating training data...")
     start_time = time.time()
@@ -77,8 +92,10 @@ def nne_gen(data):
     label_test = label_array[split_idx:, :]
 
     # recall 'real' data
-    if args.mod == 'peer':
-        moment_real = PeerMoments(network)
+    if args.mod == 'speer':
+        moment_real = SimplePeerMoments(network)
+    elif args.mod == 'peerf':
+        moment_real = PeerFeatureMoments(network, feature)
     else:
         moment_real = MixMoments(network, guild)
 

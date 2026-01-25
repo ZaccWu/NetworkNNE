@@ -19,8 +19,6 @@ warnings.filterwarnings("ignore")
 
 
 parser = argparse.ArgumentParser('nneTrain')
-# 'peer' or 'peer+community'
-parser.add_argument('--mod', type=str, help='model type', default='peer')
 # neural network algorithm/training settings
 parser.add_argument('--num_nodes', type=int, help='layer width', default=128)   # 128
 parser.add_argument('--batch_size', type=int, help='training sample batch', default=256)    # 256
@@ -96,10 +94,6 @@ def nne_train(data):
     train_dataset = TensorDataset(torch.tensor(input_train, dtype=torch.float32),
                                   torch.tensor(label_train, dtype=torch.float32))
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-
-    # val_dataset = TensorDataset(torch.tensor(input_test, dtype=torch.float32),
-    #                             torch.tensor(label_test, dtype=torch.float32))
-    # val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
     net = NeuralNet(M, args.num_nodes, output_dim)
 
 
