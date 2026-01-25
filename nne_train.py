@@ -9,6 +9,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from Positive_transform import Positive_transform
 from sklearn.preprocessing import StandardScaler
+from normalRegressionLayer import NormalRegressionLayer
 import pickle
 from Test_error_summary import Test_error_summary
 import sys
@@ -40,9 +41,9 @@ except:
 
 
 class NeuralNet(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim, learn_se=True):
+    def __init__(self, input_dim, hidden_dim, output_dim):
         super().__init__()
-        self.learn_se = learn_se
+
         self.model = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
             nn.ELU(),
@@ -54,6 +55,19 @@ class NeuralNet(nn.Module):
     def forward(self, x):
         return self.model(x)
 
+
+def forward_loss(Y, T): # y_pred, y_true
+    #print(Y.shape)
+    #print(T.shape)
+    k = Y.shape[1] // 2
+    n = Y.shape[0]
+    U = Y[:, :k]
+    S = torch.tensor(Positive_transform(Y[:, k:2*k].detach().numpy()))
+    X = T[:, :k]
+    squared_err = 2 * torch.log(S) + ((U - X) / S) ** 2
+    # sum all elements, then divide by n
+    loss = squared_err.sum() / n
+    return loss
 
 def nne_train(data):
     # load training/validation/real data
@@ -86,12 +100,15 @@ def nne_train(data):
     # val_dataset = TensorDataset(torch.tensor(input_test, dtype=torch.float32),
     #                             torch.tensor(label_test, dtype=torch.float32))
     # val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
-    net = NeuralNet(M, args.num_nodes, output_dim, args.learn_standard_error)
+    net = NeuralNet(M, args.num_nodes, output_dim)
 
 
     device = torch.device("cpu")
     net.to(device)
-    criterion = nn.MSELoss()
+    if args.learn_standard_error:
+        criterion = forward_loss
+    else:
+        criterion = nn.MSELoss()
     optimizer = optim.Adam(net.parameters(), lr=args.initial_lr)
 
     # Optional: learning rate scheduler similar to MATLAB piecewise schedule
