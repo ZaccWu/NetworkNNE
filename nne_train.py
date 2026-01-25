@@ -37,6 +37,12 @@ except:
     parser.print_help()
     sys.exit(0)
 
+def set_train_seed(seed):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
 
 class NeuralNet(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim):
@@ -155,4 +161,5 @@ def nne_train(data):
 if __name__ == "__main__":
     with open('training_set_gen.pkl', 'rb') as f:  # data from "set_up.py"
         data = pickle.load(f)
+    set_train_seed(101)
     nne_train(data)
