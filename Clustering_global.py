@@ -3,25 +3,20 @@ from scipy.sparse import csr_matrix, issparse
 
 
 def Clustering_global(Y):
-    """
-    Compute a global clustering coefficient as in MATLAB code:
-        globalcoef = sum(Y^2 where Y==1) / sum(Y^2)
-    Returns:
-        globalcoef : float
-        Y2 : Y squared with diagonal zeroed
-    """
     if issparse(Y):
-        Y = Y.toarray()
+        Y2_sparse = Y @ Y   # using sparse matrix for light computation
+        Y2_sparse.setdiag(0)
 
-    n = Y.shape[0]
-    Y2 = Y @ Y  # matrix square (n*n)
-    np.fill_diagonal(Y2, 0)  # set diagonal to zero
+        numerator = Y2_sparse.multiply(Y).sum()
+        denominator = Y2_sparse.sum()
 
-    numerator = np.sum(Y2[Y == 1])
-    denominator = np.sum(Y2)
+        Y2_return = Y2_sparse
 
-    globalcoef = numerator / denominator if denominator != 0 else 0.0
+    else:
+        raise ValueError("Y is not a sparse matrix")
+
+    globalcoef = float(numerator) / float(denominator) if denominator != 0 else 0.0
     if np.isnan(globalcoef):
         globalcoef = 0.0
 
-    return globalcoef, Y2
+    return globalcoef, Y2_return
