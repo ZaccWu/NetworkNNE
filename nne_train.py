@@ -21,8 +21,8 @@ warnings.filterwarnings("ignore")
 parser = argparse.ArgumentParser('nneTrain')
 # neural network algorithm/training settings
 parser.add_argument('--num_nodes', type=int, help='layer width', default=128)   # 128
-parser.add_argument('--batch_size', type=int, help='training sample batch', default=256)    # 256
-parser.add_argument('--max_epochs', type=int, help='training epoches', default=100)         # 100
+parser.add_argument('--batch_size', type=int, help='training sample batch', default=64)    # 64
+parser.add_argument('--max_epochs', type=int, help='training epoches', default=200)         # 200
 parser.add_argument('--initial_lr', type=int, help='initial learning rate', default=0.01)   # 0.01
 
 # display settings
@@ -159,7 +159,8 @@ def nne_train(data):
 
 
 if __name__ == "__main__":
-    with open('training_set_gen.pkl', 'rb') as f:  # data from "set_up.py"
+    with open('simu_data_collect/model3/training_set_gen.pkl', 'rb') as f:
+    #with open('training_set_gen.pkl', 'rb') as f:  # data from "set_up.py"
         data = pickle.load(f)
     set_train_seed(101)
     nne_train(data)
