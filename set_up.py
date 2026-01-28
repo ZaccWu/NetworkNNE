@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore")
 parser = argparse.ArgumentParser('SetUp')
 # 'peer' or 'peer+community'
 parser.add_argument('--mod', type=str, help='model type', default='peerf') # speer, peerf, mix
-parser.add_argument('--r', type=int, help='model type', default=1000) # number of parameter sample (default: 1e4, try: 10~1e3)
+parser.add_argument('--r', type=int, help='model type', default=100) # number of parameter sample (default: 1e4, try: 10~1e3)
 
 try:
     args = parser.parse_args()
