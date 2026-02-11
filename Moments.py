@@ -69,9 +69,12 @@ def PeerFeatureMoments(network, feature):
     for p in range(period):
         Y = network[p]
         deg = np.array(Y.sum(axis=1).A1).flatten()  # 求和+转成 长度 n 的一维 numpy array
+
         moment1 = np.array([
             np.mean(deg),
             np.var(deg),
+            np.mean(feature.squeeze(-1)), # add peer features
+            np.var(feature.squeeze(-1)),  # add peer features
             Clustering_global(Y)[0],
         ])
         moment1_list.append(moment1)
@@ -103,11 +106,7 @@ def PeerFeatureMoments(network, feature):
     # 合并 moment1, moment2
     moment1_array = np.vstack(moment1_list)
     moment2_array = np.mean(np.vstack(moment2_list), axis=0)
-
-    moment3_array = np.mean(feature.squeeze(-1))
-
-    moment = np.hstack([moment1_array.flatten(), moment2_array, moment3_array])
-
+    moment = np.hstack([moment1_array.flatten(), moment2_array])
     return moment
 
 # calculate data moments of Mix Model DGP
