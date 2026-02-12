@@ -45,6 +45,7 @@ def SimplePeerMoments(network):
         B2 = draw1.toarray().astype(int) if isspmatrix(draw1) else draw1.astype(int)
         i2 = np.tril((A2-B2).astype(bool), k=-1)
         D2 = np.column_stack([Y0[i2], dist[i2], log_deg_sum[i2]])
+      
 
         moment2 = Stat(D1, D2)
         moment2_list.append(moment2)
@@ -90,15 +91,17 @@ def PeerFeatureMoments(network, feature):
         adj = csr_matrix(Y0)
         dist = shortest_path(adj, method='D', directed=False)  # shape = (n, n)
         dist = 1 - 1 / (1 + dist)
+        
+        fea_cov = np.dot(feature, feature.T)
 
         # lower triangular indices
         i1 = np.tril_indices(n, k=-1)
-        D1 = np.column_stack([Y0[i1], dist[i1], log_deg_sum[i1]])
+        D1 = np.column_stack([Y0[i1], dist[i1], log_deg_sum[i1], fea_cov[i1]])
 
         A2 = Y.astype(int)
         B2 = draw1.toarray().astype(int) if isspmatrix(draw1) else draw1.astype(int)
         i2 = np.tril((A2-B2).astype(bool), k=-1)
-        D2 = np.column_stack([Y0[i2], dist[i2], log_deg_sum[i2]])
+        D2 = np.column_stack([Y0[i2], dist[i2], log_deg_sum[i2], fea_cov[i2]])
 
         moment2 = Stat(D1, D2)
         moment2_list.append(moment2)

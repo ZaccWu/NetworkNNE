@@ -61,7 +61,7 @@ def Test_error_summary(input_test, label_test, label_name, net, figure=True, tab
 
         for j in range(p):  # Scatter plots
             ax = axes[0, j]
-            ax.scatter(label_test[:, j], err[:, j] + label_test[:, j], s=30, color=[0, 0.4, 0.7], marker='.')
+            ax.scatter(label_test[:, j], err[:, j] + label_test[:, j], s=10, color=[0, 0.4, 0.7], marker='.')
             ax.set_xlabel(f"${label_name[j]}$")
             ax.set_ylabel(f"$\\hat{{{label_name[j]}}}$")
 

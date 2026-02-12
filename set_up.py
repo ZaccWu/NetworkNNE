@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore")
 parser = argparse.ArgumentParser('SetUp')
 # 'peer' or 'peer+community'
 parser.add_argument('--mod', type=str, help='model type', default='peerf') # speer, peerf, mix
-parser.add_argument('--r', type=int, help='model type', default=100) # number of parameter sample (default: 1e4, try: 10~1e3)
+parser.add_argument('--r', type=int, help='model type', default=1000) # number of parameter sample (default: 1e4, try: 10~1e3)
 
 try:
     args = parser.parse_args()
@@ -84,7 +84,7 @@ def set_up():
             network = econmodel.get_data(theta)
         else:
             econmodel = PeerModelwithFeature(n, period)
-            network, _ = econmodel.get_data(theta)
+            network, feature = econmodel.get_data(theta)
         PeerDataDescriptive(network)
 
     else:
@@ -106,7 +106,7 @@ def set_up():
     # rho = np.count_nonzero(network[0]) / n / (n - 1)
     rho = network[0].sum() / n / (n - 1) # 利用csr matrix的特性计算网络密度
 
-    n0, m0 = 500, 100
+    n0, m0 = 500, 100 # 500, 100
     for t in range(R):
         while True:
             theta_sample = np.random.uniform(lb, ub) # uniform sampling within bounds
@@ -123,7 +123,7 @@ def set_up():
             density = network_simul[0].sum() / n0 / (n0 - 1)
 
             #if rho / 5 < density < rho * 5:
-            if rho / 5 < density < rho * 5:  # 选择密度在一定初始网络一定范围内的样本
+            if rho / 3 < density < rho * 3:  # 选择密度在一定初始网络一定范围内的样本
                 basket_theta[t, :] = theta_sample
                 break
 
@@ -144,7 +144,7 @@ def set_up():
     elif args.mod == 'peerf':
         save_dict = {
             'network': network, # csr sparse matrix
-            'feature': feature_simul,
+            'feature': feature,
             'label_name': label_name, # parameter name
             'lb': lb,           # parameter lower bound
             'ub': ub,           # parameter upper bound

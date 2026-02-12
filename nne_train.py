@@ -159,8 +159,9 @@ def nne_train(data):
 
 
 if __name__ == "__main__":
-    with open('simu_data_collect/model3/R=10000/training_set_gen.pkl', 'rb') as f:
-    #with open('training_set_gen.pkl', 'rb') as f:  # data from "set_up.py"
+    #with open('simu_data_collect/model3_speer/R=10000/training_set_gen.pkl', 'rb') as f:
+    #with open('simu_data_collect/model3_speer/R=10000, 0.33<rho<3/training_set_gen.pkl', 'rb') as f:
+    with open('training_set_gen.pkl', 'rb') as f:  # data from "set_up.py"
         data = pickle.load(f)
     set_train_seed(101)
     nne_train(data)
