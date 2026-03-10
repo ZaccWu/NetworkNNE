@@ -2,8 +2,6 @@ import numpy as np
 from scipy.sparse import csr_matrix, tril, isspmatrix
 from scipy.sparse import triu as sparse_triu
 from Clustering_global import Clustering_global
-
-from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import shortest_path
 
 # calculate data moments of Peer Model DGP

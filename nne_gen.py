@@ -122,8 +122,8 @@ def nne_gen(data):
 
 
 if __name__ == "__main__":
-    with open('training_set.pkl', 'rb') as f:  # data from "set_up.py"
+    with open('training_set_'+args.mod+'.pkl', 'rb') as f:  # data from "set_up.py"
         data = pickle.load(f)
     save_dict = nne_gen(data)
-    with open('training_set_gen.pkl', 'wb') as f:
+    with open('training_set_gen_'+args.mod+'.pkl', 'wb') as f:
         pickle.dump(save_dict, f)

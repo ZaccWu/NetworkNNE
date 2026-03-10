@@ -43,6 +43,7 @@ class SimplePeerModel():
                 + U_constant
                 - self.beta5 * (log_deg + log_deg.T)
             )
+         
 
             #i = np.tril(U > -4.5951, -1) # Screening sets i, j (lower triangular)
             i = np.tril(U > -11.5951, -1)  # Screening sets i, j (lower triangular)
@@ -112,12 +113,12 @@ class PeerModelwithFeature():
             U = (
                 self.beta1 * Y0
                 - self.beta2 * x_diff
-                + U_constant
+                + U_constant + p
                 - self.beta5 * (log_deg + log_deg.T)
             )
 
             #i = np.tril(U > -4.5951, -1) # Screening sets i, j (lower triangular)
-            i = np.tril(U > -11.5951, -1)  # Screening sets i, j (lower triangular)
+            i = np.tril(U > np.mean(U), -1)  # Screening sets i, j (lower triangular)
             density = poisson.rvs(self.n**2 * 0.01) / (self.n**2) # sprandsym equivalent
             j_rand = sp.rand(self.n, self.n, density)
             j = np.tril((j_rand != 0).toarray(), -1)

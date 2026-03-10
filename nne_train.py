@@ -21,15 +21,15 @@ warnings.filterwarnings("ignore")
 parser = argparse.ArgumentParser('nneTrain')
 # neural network algorithm/training settings
 parser.add_argument('--num_nodes', type=int, help='layer width', default=128)   # 128
-parser.add_argument('--batch_size', type=int, help='training sample batch', default=64)    # 64
-parser.add_argument('--max_epochs', type=int, help='training epoches', default=200)         # 200
+parser.add_argument('--batch_size', type=int, help='training sample batch', default=32)    # 256
+parser.add_argument('--max_epochs', type=int, help='training epoches', default=100)         # 100
 parser.add_argument('--initial_lr', type=int, help='initial learning rate', default=0.01)   # 0.01
 
 # display settings
 parser.add_argument('--disp_test_summary', type=bool, help='display test summary', default=True)
 parser.add_argument('--display_fig', type=bool, help='display figure', default=True)
 parser.add_argument('--disp_iter', type=bool, help='display iteration', default=True)
-parser.add_argument('--learn_standard_error', type=bool, help='learn standard error', default=True)
+parser.add_argument('--learn_standard_error', type=bool, help='learn standard error', default=False)
 
 try:
     args = parser.parse_args()
@@ -67,6 +67,7 @@ def forward_loss(Y, T): # y_pred, y_true
     n = Y.shape[0]
     U = Y[:, :k]
     S = torch.tensor(Positive_transform(Y[:, k:2*k].detach().numpy()))
+    S = S+1e-8
     X = T[:, :k]
     squared_err = 2 * torch.log(S) + ((U - X) / S) ** 2
     # sum all elements, then divide by n
@@ -95,6 +96,7 @@ def nne_train(data):
     scaler = StandardScaler()
     input_train, input_test = scaler.fit_transform(input_train), scaler.fit_transform(input_test)
     input_real = scaler.fit_transform(input_real.reshape(1, -1))
+    
 
     # Dataset and DataLoader
     train_dataset = TensorDataset(torch.tensor(input_train, dtype=torch.float32),
@@ -159,9 +161,9 @@ def nne_train(data):
 
 
 if __name__ == "__main__":
-    #with open('simu_data_collect/model3_speer/R=10000/training_set_gen.pkl', 'rb') as f:
+    #with open('simu_data_collect/model2_peerf/R=10000,U+tau/training_set_gen_peerf.pkl', 'rb') as f:
     #with open('simu_data_collect/model3_speer/R=10000, 0.33<rho<3/training_set_gen.pkl', 'rb') as f:
-    with open('training_set_gen.pkl', 'rb') as f:  # data from "set_up.py"
+    with open('training_set_gen_peerf.pkl', 'rb') as f:  # data from "set_up.py"
         data = pickle.load(f)
     set_train_seed(101)
     nne_train(data)

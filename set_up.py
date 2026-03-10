@@ -26,9 +26,9 @@ def set_beta(mod):
         bounds = [
             [-6.5, -10, -5, r'\lambda_f'],
             [12, 5, 15, r'\alpha_f'],
-            [4, 0, 10, r'\delta_f'],  # delta
+            [4, 0, 10, r'\delta_f'],  # delta # check here
             [0.75, 0, 1, r'\theta_f'],  # theta
-            [0.25, 0, 1, r'\gamma_f'],  # gamma
+            [0.25, 0, 1, r'\gamma_f'],  # gamma # check here
             [4, 1, 5, r'\tau']  # tau
         ]
         return bounds
@@ -38,9 +38,9 @@ def set_beta(mod):
             [-6.5, -10, -5, r'\lambda_f'],
             [12, 5, 15, r'\alpha_f'],
             [1, 0, 2, r'\beta_f'],  # beta
-            [4, 0, 10, r'\delta_f'],  # delta
+            [4, 0, 10, r'\delta_f'],  # delta # check here
             [0.75, 0, 1, r'\theta_f'],  # theta
-            [0.25, 0, 1, r'\gamma_f'],  # gamma
+            [0.25, 0, 1, r'\gamma_f'],  # gamma # check here
             [4, 1, 5, r'\tau']  # tau
         ]
         return bounds
@@ -122,8 +122,8 @@ def set_up():
 
             density = network_simul[0].sum() / n0 / (n0 - 1)
 
-            #if rho / 5 < density < rho * 5:
-            if rho / 3 < density < rho * 3:  # 选择密度在一定初始网络一定范围内的样本
+            if rho / 2 < density < rho * 2:
+            #if rho / 3 < density < rho * 3:  # 选择密度在一定初始网络一定范围内的样本
                 basket_theta[t, :] = theta_sample
                 break
 
