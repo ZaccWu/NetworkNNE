@@ -113,7 +113,7 @@ class PeerModelwithFeature():
             U = (
                 self.beta1 * Y0
                 - self.beta2 * x_diff
-                + U_constant + p
+                + U_constant #+ p
                 - self.beta5 * (log_deg + log_deg.T)
             )
 

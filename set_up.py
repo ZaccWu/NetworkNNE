@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore")
 parser = argparse.ArgumentParser('SetUp')
 # 'peer' or 'peer+community'
 parser.add_argument('--mod', type=str, help='model type', default='peerf') # speer, peerf, mix
-parser.add_argument('--r', type=int, help='model type', default=1000) # number of parameter sample (default: 1e4, try: 10~1e3)
+parser.add_argument('--r', type=int, help='model type', default=10000) # number of parameter sample (default: 1e4, try: 10~1e3)
 
 try:
     args = parser.parse_args()
@@ -24,7 +24,7 @@ except:
 def set_beta(mod):
     if mod == 'speer': # simple peer model
         bounds = [
-            [-6.5, -10, -5, r'\lambda_f'],
+            [-5.5, -8, -3, r'\lambda_f'],
             [12, 5, 15, r'\alpha_f'],
             [4, 0, 10, r'\delta_f'],  # delta # check here
             [0.75, 0, 1, r'\theta_f'],  # theta
@@ -35,16 +35,16 @@ def set_beta(mod):
 
     elif mod == 'peerf': # peer model with features
         bounds = [
-            [-6.5, -10, -5, r'\lambda_f'],
+            [-5, -6, -4, r'\lambda_f'],
             [12, 5, 15, r'\alpha_f'],
-            [1, 0, 2, r'\beta_f'],  # beta
+            [1, 0, 2, r'\beta_f'],  # beta (default: 1, 0, 2)
             [4, 0, 10, r'\delta_f'],  # delta # check here
             [0.75, 0, 1, r'\theta_f'],  # theta
             [0.25, 0, 1, r'\gamma_f'],  # gamma # check here
             [4, 1, 5, r'\tau']  # tau
         ]
         return bounds
-
+        
     elif mod == 'mix': # mixed model (peer + community)
         bounds = [
             [-6.5, -10, -5, r'\beta_0'],  # lambda
@@ -114,17 +114,19 @@ def set_up():
                 econmodel = SimplePeerModel(n0, period=1)
                 network_simul = econmodel.get_data(theta_sample)
             elif args.mod == 'peerf':
-                econmodel = PeerModelwithFeature(n0, period=1)
+                econmodel = PeerModelwithFeature(n0, period=4)
                 network_simul, feature_simul = econmodel.get_data(theta_sample)
+                
             else:
                 econmodel = MixModel(n0, m0, period=1)
                 network_simul, guild_simul = econmodel.get_data(theta_sample)
 
             density = network_simul[0].sum() / n0 / (n0 - 1)
 
-            if rho / 2 < density < rho * 2:
-            #if rho / 3 < density < rho * 3:  # 选择密度在一定初始网络一定范围内的样本
+            if rho / 5 < density < rho * 5: # 选择密度在一定初始网络一定范围内的样本
                 basket_theta[t, :] = theta_sample
+                #PeerDataDescriptive(network_simul)
+                #print("tau: ", int(round(theta_sample[-1])), ", lambda: ", theta_sample[0])
                 break
 
         if t%10 == 0:
@@ -166,5 +168,5 @@ def set_up():
 
 if __name__ == "__main__":
     save_dict = set_up()
-    with open('training_set.pkl', 'wb') as f:
+    with open('training_set_'+args.mod+'.pkl', 'wb') as f:
         pickle.dump(save_dict, f)

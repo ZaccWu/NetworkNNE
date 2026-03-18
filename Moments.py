@@ -93,12 +93,12 @@ def PeerFeatureMoments(network, feature):
         fea_cov = np.dot(feature, feature.T)
 
         # lower triangular indices
-        i1 = np.tril_indices(n, k=-1)
+        i1 = np.tril_indices(n, k=-1) # 获得n*n的矩阵的左下三角的索引(bool)
         D1 = np.column_stack([Y0[i1], dist[i1], log_deg_sum[i1], fea_cov[i1]])
 
         A2 = Y.astype(int)
-        B2 = draw1.toarray().astype(int) if isspmatrix(draw1) else draw1.astype(int)
-        i2 = np.tril((A2-B2).astype(bool), k=-1)
+        B2 = draw1.toarray().astype(int) if isspmatrix(draw1) else draw1.astype(int) # B2: 随机对称矩阵
+        i2 = np.tril((A2-B2).astype(bool), k=-1) # 下三角的索引(bool)：当前网络Y与随机网络不同的(i,j)对
         D2 = np.column_stack([Y0[i2], dist[i2], log_deg_sum[i2], fea_cov[i2]])
 
         moment2 = Stat(D1, D2)
