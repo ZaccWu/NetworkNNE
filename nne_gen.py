@@ -2,8 +2,8 @@ import numpy as np
 import time
 from joblib import Parallel, delayed
 import pickle
-from Model import SimplePeerModel, PeerModelwithFeature, MixModel
-from Moments import SimplePeerMoments, PeerFeatureMoments, MixMoments
+from Model import PeerModelwithFeature
+from Moments import PeerFeatureMoments
 from tqdm import tqdm
 import sys
 import argparse

@@ -1,8 +1,8 @@
 import numpy as np
 import time
 import pickle
-from Model import SimplePeerModel, PeerModelwithFeature, MixModel
-from Descriptive import PeerDataDescriptive, MixDataDescriptive
+from Model import PeerModelwithFeature
+from Descriptive import PeerDataDescriptive
 import sys
 import argparse
 import warnings
@@ -22,7 +22,7 @@ except:
 
 def set_beta():
     bounds = [
-        [-5, -6, -4, r'\lambda_f'],
+        [-2.5, -3, -2, r'\lambda_f'],
         [12, 5, 15, r'\alpha_f'],
         [1, 0, 2, r'\beta_f'],  # beta (default: 1, 0, 2)
         [4, 0, 10, r'\delta_f'],  # delta # check here
@@ -64,7 +64,7 @@ def set_up():
     for t in range(R):
         while True:
             theta_sample = np.random.uniform(lb, ub) # uniform sampling within bounds
-            econmodel = PeerModelwithFeature(n0, period=4)
+            econmodel = PeerModelwithFeature(n0, period=1)
             network_simul, feature_simul = econmodel.get_data(theta_sample)
             density = network_simul[0].sum() / n0 / (n0 - 1)
             if rho / 5 < density < rho * 5: # 选择密度在一定初始网络一定范围内的样本
