@@ -1,0 +1,4 @@
+不同类型模型的对比：
+* Simple Peer Effect Model
+* Peer Effect Model with Observable Features（可恢复所有参数版本-20260315）
+* Peer Effect + Community（NetworkNNE Paper的设置）
