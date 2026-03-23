@@ -169,17 +169,21 @@ if __name__ == "__main__":
 
     ## TODO: 这里改成字典分析结果
     results_all = {}
-    mask_scheme = [[], [int(i) for i in np.arange(0,20)], [int(i) for i in np.arange(20,48)],]
-    for ms in mask_scheme:
-        print(ms)
-        input_train, input_test, input_real = get_mask_scheme([ms])
+
+    mask_scheme = {'full': [],
+                    'no moment1': [int(i) for i in np.arange(0,20)],
+                    'no moment2': [int(i) for i in np.arange(20,48)]}
+
+    for k, v in mask_scheme.items():
+        print(k, v)
+        input_train, input_test, input_real = get_mask_scheme([v])
         result, theta = nne_train_specify(args, input_train, input_test, input_real)
         # define the checking parameter in interest
         res_all = [result.loc[r'\beta_f', 'bias'],
                 result.loc[r'\beta_f', 'rmse'],
                 theta[2]]
         res_label_name = ['beta_f_bias', 'beta_f_rmse', 'beta_f_real_pred']
-        results_all[str(ms)] = res_all
+        results_all[k] = res_all
 
     results_all = pd.DataFrame(results_all, index=res_label_name)
     print(results_all)
