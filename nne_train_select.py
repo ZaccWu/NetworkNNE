@@ -126,9 +126,15 @@ def nne_train_specify(args, input_train, input_test, input_real):
         y_hat = net(torch.tensor(input_test, dtype=torch.float32))
         y_hat = y_hat.detach().cpu().numpy()
         err = y_hat[:, :mts] - label_test[:, :mts]
-        bias = [f"{np.mean(err[:, j]):.3f} ({np.std(err[:, j])/np.sqrt(nts):.1f})" for j in range(mts)]
-        rmse = [f"{np.sqrt(np.mean(err[:, j]**2)):.3f} ({0.5/np.sqrt(np.mean(err[:, j]**2))*np.std(err[:, j]**2)/np.sqrt(nts):.1f})"
-                for j in range(mts)]
+        # bias = [f"{np.mean(err[:, j]):.3f} ({np.std(err[:, j])/np.sqrt(nts):.1f})" for j in range(mts)]
+        # rmse = [f"{np.sqrt(np.mean(err[:, j]**2)):.3f} ({0.5/np.sqrt(np.mean(err[:, j]**2))*np.std(err[:, j]**2)/np.sqrt(nts):.1f})"
+        #         for j in range(mts)]
+        # result = pd.DataFrame({
+        #     'bias': bias,
+        #     'rmse': rmse,
+        # }, index=label_name)
+        bias = [np.mean(err[:, j]) for j in range(mts)]
+        rmse = [np.sqrt(np.mean(err[:, j]**2)) for j in range(mts)]
         result = pd.DataFrame({
             'bias': bias,
             'rmse': rmse,
@@ -142,7 +148,17 @@ def nne_train_specify(args, input_train, input_test, input_real):
     # 截断 theta
     theta = np.clip(temp[:L], lb, ub)
     print(theta)
+    return result, theta
 
+
+def get_mask_scheme(mask_col):
+    mask_train = np.ones(data['input_train'].shape[1], dtype=bool)
+    mask_test = np.ones(data['input_test'].shape[1], dtype=bool)
+    mask_real = np.ones(data['input_real'].shape[0], dtype=bool)
+    
+    #mask[[2, 5, 10]] = False
+    mask_train[mask_col], mask_test[mask_col], mask_real[mask_col] = False, False, False
+    return data['input_train'][:, mask_train], data['input_test'][:, mask_test], data['input_real'][mask_real]
 
 
 if __name__ == "__main__":
@@ -151,20 +167,20 @@ if __name__ == "__main__":
     args = getTrainArgs()
     # input: 20 moment1 (4 period, 5 statistics), 28 moment2 (3-period-average, D1: 4+10, D2: 4+10)
 
-    print("Full")
-    input_train = data['input_train']
-    input_test = data['input_test']
-    input_real = data['input_real']
-    nne_train_specify(args, input_train, input_test, input_real)
+    ## TODO: 这里改成字典分析结果
+    results_all = {}
+    mask_scheme = [[], [int(i) for i in np.arange(0,20)], [int(i) for i in np.arange(20,48)],]
+    for ms in mask_scheme:
+        print(ms)
+        input_train, input_test, input_real = get_mask_scheme([ms])
+        result, theta = nne_train_specify(args, input_train, input_test, input_real)
+        # define the checking parameter in interest
+        res_all = [result.loc[r'\beta_f', 'bias'],
+                result.loc[r'\beta_f', 'rmse'],
+                theta[2]]
+        res_label_name = ['beta_f_bias', 'beta_f_rmse', 'beta_f_real_pred']
+        results_all[str(ms)] = res_all
 
-    print("\n w/o moment 1:")
-    input_train = data['input_train'][:,20:]
-    input_test = data['input_test'][:,20:]
-    input_real = data['input_real'][20:]
-    nne_train_specify(args, input_train, input_test, input_real)
-
-    print("\n w/o moment 2:")
-    input_train = data['input_train'][:,:20]
-    input_test = data['input_test'][:,:20]
-    input_real = data['input_real'][:20]
-    nne_train_specify(args, input_train, input_test, input_real)
+    results_all = pd.DataFrame(results_all, index=res_label_name)
+    print(results_all)
+    results_all.to_csv('results_all.csv')
