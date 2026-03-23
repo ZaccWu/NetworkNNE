@@ -1,18 +1,15 @@
-import numpy as np
-import os
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
-from Positive_transform import Positive_transform
-from sklearn.preprocessing import StandardScaler
-from normalRegressionLayer import NormalRegressionLayer
 import pickle
-from Test_error_summary import Test_error_summary
 import sys
 import argparse
-import warnings
-warnings.filterwarnings("ignore")
+import numpy as np
+import torch
+import torch.nn as nn
+from Positive_transform import Positive_transform
+from sklearn.preprocessing import StandardScaler
+from torch.utils.data import DataLoader, TensorDataset
+import torch.optim as optim
+import pandas as pd
+
 
 def getTrainArgs():
     parser = argparse.ArgumentParser('nneTrain')
@@ -25,16 +22,13 @@ def getTrainArgs():
     # display settings
     parser.add_argument('--disp_test_summary', type=bool, help='display test summary', default=True)
     parser.add_argument('--display_fig', type=bool, help='display figure', default=True)
-    parser.add_argument('--disp_iter', type=bool, help='display iteration', default=True)
-    parser.add_argument('--learn_standard_error', type=bool, help='learn standard error', default=False)
 
     try:
         args = parser.parse_args()  # Pass empty list to ignore kernel args
         return args
     except:
-        parser.print_help()
-        sys.exit(0)
-    
+        args, _ = parser.parse_known_args()
+        return args
 
 def set_train_seed(seed):
     np.random.seed(seed)
@@ -58,7 +52,6 @@ class NeuralNet(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-
 def forward_loss(Y, T): # y_pred, y_true
     #print(Y.shape)
     #print(T.shape)
@@ -73,11 +66,11 @@ def forward_loss(Y, T): # y_pred, y_true
     loss = squared_err.sum() / n
     return loss
 
-def nne_train(data, args):
-    # load training/validation/real data
-    input_train, label_train = data['input_train'], data['label_train']
-    input_test, label_test = data['input_test'], data['label_test']
-    input_real = data['input_real']
+
+
+def nne_train_specify(args, input_train, input_test, input_real):
+    label_train = data['label_train']
+    label_test = data['label_test']
     lb, ub = data['lb'], data['ub']
     label_name = data['label_name']
 
@@ -85,30 +78,22 @@ def nne_train(data, args):
     R = R_train + R_test
     M, L = input_train.shape[1], label_train.shape[1]
 
-    if args.learn_standard_error:   # sd as labels
-        label_train = np.hstack([label_train, np.zeros((R_train, L))])
-        label_test = np.hstack([label_test, np.zeros((R_test, L))])
-        output_dim = 2 * L
-    else:
-        output_dim = L
 
+    output_dim = L
     scaler = StandardScaler()
     input_train, input_test = scaler.fit_transform(input_train), scaler.fit_transform(input_test)
     input_real = scaler.fit_transform(input_real.reshape(1, -1))
-    
 
     # Dataset and DataLoader
     train_dataset = TensorDataset(torch.tensor(input_train, dtype=torch.float32),
-                                  torch.tensor(label_train, dtype=torch.float32))
+                                    torch.tensor(label_train, dtype=torch.float32))
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     net = NeuralNet(M, args.num_nodes, output_dim)
 
+
     device = torch.device("cpu")
     net.to(device)
-    if args.learn_standard_error:
-        criterion = forward_loss
-    else:
-        criterion = nn.MSELoss()
+    criterion = nn.MSELoss()
     optimizer = optim.Adam(net.parameters(), lr=args.initial_lr)
 
     # Optional: learning rate scheduler similar to MATLAB piecewise schedule
@@ -131,38 +116,55 @@ def nne_train(data, args):
         with torch.no_grad():
             test_preds = net(torch.tensor(input_test, dtype=torch.float32))
             loss_va = criterion(test_preds, torch.tensor(label_test, dtype=torch.float32))
+            #print(f"Epoch {epoch + 1}/{args.max_epochs}, Train Loss: {loss.item():.4f}, Val Loss: {loss_va.item():.4f}")
 
-        if args.disp_iter:
-            print(f"Epoch {epoch + 1}/{args.max_epochs}, Train Loss: {loss.item():.4f}, Val Loss: {loss_va.item():.4f}")
-
-
-    if args.disp_test_summary:
-        net.eval()
-        with torch.no_grad():
-            test_preds = net(torch.tensor(input_test, dtype=torch.float32))
-            Test_error_summary(torch.tensor(input_test, dtype=torch.float32), label_test, label_name, net, figure=args.display_fig, table=1)
+    # table results
+    net.eval()
+    with torch.no_grad():
+        nts, kts = label_test.shape # num of samples, num of output_dim
+        mts = len(label_name)     # num of parameters
+        y_hat = net(torch.tensor(input_test, dtype=torch.float32))
+        y_hat = y_hat.detach().cpu().numpy()
+        err = y_hat[:, :mts] - label_test[:, :mts]
+        bias = [f"{np.mean(err[:, j]):.3f} ({np.std(err[:, j])/np.sqrt(nts):.1f})" for j in range(mts)]
+        rmse = [f"{np.sqrt(np.mean(err[:, j]**2)):.3f} ({0.5/np.sqrt(np.mean(err[:, j]**2))*np.std(err[:, j]**2)/np.sqrt(nts):.1f})"
+                for j in range(mts)]
+        result = pd.DataFrame({
+            'bias': bias,
+            'rmse': rmse,
+        }, index=label_name)
+    print("Test results:", result)
 
     # Estimate on original data
     net.eval()
     with torch.no_grad():
         temp = net(torch.tensor(input_real.squeeze(0), dtype=torch.float32)).numpy()
-
     # 截断 theta
     theta = np.clip(temp[:L], lb, ub)
-
-    # 正向变换标准误（如果学习）
-    if args.learn_standard_error:
-        se = Positive_transform(temp[L:2 * L])
-
     print(theta)
-    print(se)
+
 
 
 if __name__ == "__main__":
-    #with open('simu_data_collect/model2_peerf/R=10000,U+tau/training_set_gen_peerf.pkl', 'rb') as f:
-    #with open('simu_data_collect/model3_speer/R=10000, 0.33<rho<3/training_set_gen.pkl', 'rb') as f:
-    args = getTrainArgs()
-    with open('training_set_gen_peerf.pkl', 'rb') as f:  # data from "set_up.py"
+    with open('results/results-20260322/lambda-3~-2, alpha2~12/training_set_gen.pkl', 'rb') as f:  # data from "set_up.py"
         data = pickle.load(f)
-    set_train_seed(101)
-    nne_train(data, args)
+    args = getTrainArgs()
+    # input: 20 moment1 (4 period, 5 statistics), 28 moment2 (3-period-average, D1: 4+10, D2: 4+10)
+
+    print("Full")
+    input_train = data['input_train']
+    input_test = data['input_test']
+    input_real = data['input_real']
+    nne_train_specify(args, input_train, input_test, input_real)
+
+    print("\n w/o moment 1:")
+    input_train = data['input_train'][:,20:]
+    input_test = data['input_test'][:,20:]
+    input_real = data['input_real'][20:]
+    nne_train_specify(args, input_train, input_test, input_real)
+
+    print("\n w/o moment 2:")
+    input_train = data['input_train'][:,:20]
+    input_test = data['input_test'][:,:20]
+    input_real = data['input_real'][:20]
+    nne_train_specify(args, input_train, input_test, input_real)
