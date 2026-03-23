@@ -67,10 +67,10 @@ def Stat(*args):
     output_list = []
     for data in args:
         data = np.array(data)
-        u = np.mean(data, axis=0)
-        v = np.cov(data, rowvar=False)
-        v_flat = v[np.triu_indices(v.shape[0])]
-        output_list.append(np.hstack([u, v_flat]))
+        u = np.mean(data, axis=0)   # 返回列维度均值矩阵，这里长为4
+        v = np.cov(data, rowvar=False)  # 返回列维度的协方差矩阵（D*D），这里是4*4
+        v_flat = v[np.triu_indices(v.shape[0])] # 返回协方差矩阵上三角展平（包括对角线，即特征方差）
+        output_list.append(np.hstack([u, v_flat])) # feature维度：4+10
     output = np.hstack(output_list)
     return output
 
