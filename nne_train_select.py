@@ -139,7 +139,7 @@ def nne_train_specify(args, input_train, input_test, input_real):
             'bias': bias,
             'rmse': rmse,
         }, index=label_name)
-    print("Test results:", result)
+    #print("Test results:", result)
 
     # Estimate on original data
     net.eval()
@@ -147,7 +147,7 @@ def nne_train_specify(args, input_train, input_test, input_real):
         temp = net(torch.tensor(input_real.squeeze(0), dtype=torch.float32)).numpy()
     # 截断 theta
     theta = np.clip(temp[:L], lb, ub)
-    print(theta)
+    #print(theta)
     return result, theta
 
 
@@ -172,17 +172,42 @@ if __name__ == "__main__":
 
     mask_scheme = {'full': [],
                     'no moment1': [int(i) for i in np.arange(0,20)],
-                    'no moment2': [int(i) for i in np.arange(20,48)]}
+                    'no moment2': [int(i) for i in np.arange(20,48)],
+                    'no D1': [int(i) for i in np.arange(20,34)],
+                    'no D2': [int(i) for i in np.arange(34,48)],
+                    'no deg': [0, 1, 5, 6, 10, 11, 15, 16],
+                    'no fea mean': [2, 7, 12, 17],
+                    'no fea var': [3, 8, 13, 18],
+                    'no clu glo': [4, 9, 14, 19],
+                    'no D1 cov': [int(i) for i in np.arange(24,34)],
+                    'no D2 cov': [int(i) for i in np.arange(38,48)],
+                    'no Y0': [20, 24, 25, 26, 27, 34, 38, 39, 40, 41],
+                    'no dist': [21, 25, 28, 29, 30, 35, 39, 42, 43, 44],
+                    'no logdegsum': [22, 26, 29, 31, 32, 36, 40, 43, 45, 46],
+                    'no feacov': [23, 27, 30, 32, 33, 37, 41, 44, 46, 47],}
 
     for k, v in mask_scheme.items():
         print(k, v)
         input_train, input_test, input_real = get_mask_scheme([v])
         result, theta = nne_train_specify(args, input_train, input_test, input_real)
+
         # define the checking parameter in interest
-        res_all = [result.loc[r'\beta_f', 'bias'],
-                result.loc[r'\beta_f', 'rmse'],
-                theta[2]]
-        res_label_name = ['beta_f_bias', 'beta_f_rmse', 'beta_f_real_pred']
+        res_all = [result.loc[r'\lambda_f', 'bias'], result.loc[r'\lambda_f', 'rmse'], theta[0],
+            result.loc[r'\alpha_f', 'bias'], result.loc[r'\alpha_f', 'rmse'], theta[1],
+            result.loc[r'\beta_f', 'bias'], result.loc[r'\beta_f', 'rmse'], theta[2],
+            result.loc[r'\delta_f', 'bias'], result.loc[r'\delta_f', 'rmse'], theta[3],
+            result.loc[r'\theta_f', 'bias'], result.loc[r'\theta_f', 'rmse'], theta[4],
+            result.loc[r'\gamma_f', 'bias'], result.loc[r'\gamma_f', 'rmse'], theta[5],
+            result.loc[r'\tau', 'bias'], result.loc[r'\tau', 'rmse'], theta[6]]
+
+        res_label_name = ['lambda_f_bias', 'lambda_f_rmse', 'lambda_f_real_pred',
+            'alpha_f_bias', 'alpha_f_rmse', 'alpha_f_real_pred',
+            'beta_f_bias', 'beta_f_rmse', 'beta_f_real_pred',
+            'delta_f_bias', 'delta_f_rmse', 'delta_f_real_pred',
+            'theta_f_bias', 'theta_f_rmse', 'theta_f_real_pred',
+            'gamma_f_bias', 'gamma_f_rmse', 'gamma_f_real_pred',
+            'tau_bias', 'tau_rmse', 'tau_real_pred']
+
         results_all[k] = res_all
 
     results_all = pd.DataFrame(results_all, index=res_label_name)
