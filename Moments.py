@@ -41,12 +41,12 @@ def PeerFeatureMoments(network, feature):
         fea_cov = np.dot(feature, feature.T)
 
         # lower triangular indices
-        i1 = np.tril_indices(n, k=-1) # 获得n*n的矩阵的左下三角的索引(bool)
+        A = Y.astype(int)
+        i1 = np.tril(A>0, k=-1)
         D1 = np.column_stack([Y0[i1], dist[i1], log_deg_sum[i1], fea_cov[i1]]) # 获得对应索引的元素值
 
-        A2 = Y.astype(int)
         B2 = draw1.toarray().astype(int) if isspmatrix(draw1) else draw1.astype(int) # B2: 随机对称矩阵
-        i2 = np.tril((A2-B2)<0, k=-1) # 下三角的索引(bool)：相当于随机选取3%的yijt=0的边
+        i2 = np.tril((A-B2)<0, k=-1) # 下三角的索引(bool)：相当于随机选取3%的yijt=0的边
         D2 = np.column_stack([Y0[i2], dist[i2], log_deg_sum[i2], fea_cov[i2]])
 
         # TODO: check i1是整个网络的下三角，i2是实际网络和3%正边随机网络不一致的节点对
