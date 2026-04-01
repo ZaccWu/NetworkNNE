@@ -3,6 +3,7 @@ from scipy.sparse import csr_matrix, tril, isspmatrix
 from scipy.sparse import triu as sparse_triu
 from Clustering_global import Clustering_global
 from scipy.sparse.csgraph import shortest_path
+from sklearn.metrics.pairwise import cosine_similarity
 
 # calculate data moments of Peer Model DGP
 def PeerFeatureMoments(network, feature):
@@ -38,16 +39,17 @@ def PeerFeatureMoments(network, feature):
         dist = shortest_path(adj, method='D', directed=False)  # shape = (n, n)
         dist = 1 - 1 / (1 + dist)
         
-        fea_cov = np.dot(feature, feature.T)
+        #fea_cov = np.dot(feature, feature.T)
+        fea_cos = cosine_similarity(feature)
 
         # lower triangular indices
         A = Y.astype(int)
         i1 = np.tril(A>0, k=-1)
-        D1 = np.column_stack([Y0[i1], dist[i1], log_deg_sum[i1], fea_cov[i1]]) # 获得对应索引的元素值
+        D1 = np.column_stack([Y0[i1], dist[i1], log_deg_sum[i1], fea_cos[i1]]) # 获得对应索引的元素值
 
         B2 = draw1.toarray().astype(int) if isspmatrix(draw1) else draw1.astype(int) # B2: 随机对称矩阵
         i2 = np.tril((A-B2)<0, k=-1) # 下三角的索引(bool)：相当于随机选取3%的yijt=0的边
-        D2 = np.column_stack([Y0[i2], dist[i2], log_deg_sum[i2], fea_cov[i2]])
+        D2 = np.column_stack([Y0[i2], dist[i2], log_deg_sum[i2], fea_cos[i2]])
 
         # TODO: check i1是整个网络的下三角，i2是实际网络和3%正边随机网络不一致的节点对
 
