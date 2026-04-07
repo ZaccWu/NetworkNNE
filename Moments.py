@@ -4,6 +4,69 @@ from scipy.sparse import triu as sparse_triu
 from Clustering_global import Clustering_global
 from scipy.sparse.csgraph import shortest_path
 from sklearn.metrics.pairwise import cosine_similarity
+from scipy.sparse.csgraph import laplacian
+from scipy.sparse.linalg import spsolve
+from scipy.sparse import eye
+from scipy.sparse.linalg import expm
+
+# def resistance_distance(adj):
+#     """
+#     计算无向图的有效电阻距离矩阵。
+#     参数: adj : csr_matrix, 形状 (n, n), 邻接矩阵（对称）
+#     返回: R : ndarray, 形状 (n, n), 有效电阻距离矩阵
+#     """
+#     n = adj.shape[0]
+#     L = laplacian(adj.astype(np.float64), normed=False)          # 图拉普拉斯矩阵 L = D - A
+#     # 加入微扰使 L 满秩（或使用伪逆，但此处用逆+小扰动更简单）
+#     eps = 1e-8
+#     L_reg = (L + eps * eye(n, format='csc')).tocsc()
+#     L_inv = spsolve(L_reg, np.eye(n))                         # 稠密矩阵 (n, n)
+    
+#     # 计算电阻距离
+#     R = np.zeros((n, n))
+#     for i in range(n):
+#         for j in range(n):
+#             R[i, j] = L_inv[i, i] + L_inv[j, j] - 2 * L_inv[i, j]
+#     dist = 1 - 1 / (1 + R)
+#     return dist
+
+def resistance_distance(adj):
+    adj = csr_matrix(adj, dtype=np.float64)
+    n = adj.shape[0]
+    L = laplacian(adj, normed=False).tocsc()
+    eps = 1e-8
+    L_reg = (L + eps * eye(n, format='csc')).tocsc()
+    L_inv = spsolve(L_reg, np.eye(n))
+    d = np.diag(L_inv)
+    R = d[:, None] + d[None, :] - 2.0 * L_inv
+    dist = 1.0 - 1.0 / (1.0 + R)
+    return dist
+
+# def communicability_distance(adj, beta=1.0):
+#     """
+#     计算通信距离矩阵。
+#     """
+#     n = adj.shape[0]
+#     adj = csr_matrix(adj, dtype=np.float64).tocsc()
+#     C = expm(beta * adj)           # 稠密矩阵 (n, n)
+#     C = C.toarray() if hasattr(C, 'toarray') else np.asarray(C)
+#     comm_dist = np.zeros((n, n))
+#     for i in range(n):
+#         for j in range(n):
+#             comm_dist[i, j] = np.log( (C[i, i] * C[j, j]) / (C[i, j] ** 2 + 1e-12) )
+#     dist = 1 - 1 / (1 + comm_dist)
+#     return dist
+
+def communicability_distance(adj, beta=1.0):
+    adj = csr_matrix(adj, dtype=np.float64).tocsc()
+    C = expm(beta * adj)
+    C = C.toarray() if hasattr(C, "toarray") else np.asarray(C)
+    d = np.diag(C)
+    eps = 1e-12
+    comm_dist = np.log((d[:, None] * d[None, :]) / (C * C + eps))
+    dist = 1.0 - 1.0 / (1.0 + comm_dist)
+    return dist
+
 
 # calculate data moments of Peer Model DGP
 def PeerFeatureMoments(network, feature):
@@ -38,6 +101,8 @@ def PeerFeatureMoments(network, feature):
         adj = csr_matrix(Y0)
         dist = shortest_path(adj, method='D', directed=False)  # shape = (n, n)
         dist = 1 - 1 / (1 + dist)
+        rdist = resistance_distance(adj)
+        cdist = communicability_distance(adj)
         
         #fea_cov = np.dot(feature, feature.T)
         fea_cos = cosine_similarity(feature)
@@ -45,11 +110,11 @@ def PeerFeatureMoments(network, feature):
         # lower triangular indices
         A = Y.astype(int)
         i1 = np.tril(A>0, k=-1)
-        D1 = np.column_stack([Y0[i1], dist[i1], log_deg_sum[i1], fea_cos[i1]]) # 获得对应索引的元素值
+        D1 = np.column_stack([Y0[i1], dist[i1], rdist[i1], cdist[i1], log_deg_sum[i1], fea_cos[i1]]) # 获得对应索引的元素值
 
         B2 = draw1.toarray().astype(int) if isspmatrix(draw1) else draw1.astype(int) # B2: 随机对称矩阵
         i2 = np.tril((A-B2)<0, k=-1) # 下三角的索引(bool)：相当于随机选取3%的yijt=0的边
-        D2 = np.column_stack([Y0[i2], dist[i2], log_deg_sum[i2], fea_cos[i2]])
+        D2 = np.column_stack([Y0[i2], dist[i2], rdist[i2], cdist[i2], log_deg_sum[i2], fea_cos[i2]])
 
         # TODO: check i1是整个网络的下三角，i2是实际网络和3%正边随机网络不一致的节点对
 
