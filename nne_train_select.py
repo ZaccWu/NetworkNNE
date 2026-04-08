@@ -10,7 +10,6 @@ from torch.utils.data import DataLoader, TensorDataset
 import torch.optim as optim
 import pandas as pd
 
-
 def getTrainArgs():
     parser = argparse.ArgumentParser('nneTrain')
     # neural network algorithm/training settings
@@ -167,9 +166,9 @@ if __name__ == "__main__":
     args = getTrainArgs()
     # input: 20 moment1 (4 period, 5 statistics), 28 moment2 (3-period-average, D1: 4+10, D2: 4+10)
 
-    ## TODO: 这里改成字典分析结果
-    results_all = {}
 
+    # systematic experiments
+    results_all = {}
     mask_scheme = {'full': [],
                     'no moment1': [int(i) for i in np.arange(0,20)],
                     'no moment2': [int(i) for i in np.arange(20,48)],
