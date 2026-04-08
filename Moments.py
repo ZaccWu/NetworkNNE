@@ -23,7 +23,6 @@ def PeerFeatureMoments(network, feature):
     for p in range(period):
         Y = network[p]
         deg = np.array(Y.sum(axis=1).A1).flatten()  # 求和+转成 长度 n 的一维 numpy array
-
         moment1 = np.array([
             np.mean(deg),
             np.var(deg),
@@ -34,12 +33,14 @@ def PeerFeatureMoments(network, feature):
         moment1_list.append(moment1)
 
     # --- moment2: cross-period statistics ---
-    if period == 1:
+    for p in range(1, period):
+        Y0 = network[p - 1].toarray() if isspmatrix(network[p - 1]) else network[p - 1]
         Y = network[p].toarray() if isspmatrix(network[p]) else network[p]
-        deg = np.sum(Y, axis=1)
+        deg = np.sum(Y0, axis=1)
         log_deg = np.log1p(deg)
         log_deg_sum = log_deg[:, None] + log_deg[None, :] # 每个节点对的联合强度：log(1+di)+log(1+dj)
-        adj = csr_matrix(Y)
+
+        adj = csr_matrix(Y0)
         dist = shortest_path(adj, method='D', directed=False)  # shape = (n, n)
         dist = 1 - 1 / (1 + dist)
         fea_cos = cosine_similarity(feature)
@@ -47,35 +48,13 @@ def PeerFeatureMoments(network, feature):
         # lower triangular indices
         A = Y.astype(int)
         i1 = np.tril(A>0, k=-1)
-        i2 = np.tril(A<=0, k=-1)
-        D1 = np.column_stack([Y[i1], dist[i1], log_deg_sum[i1], fea_cos[i1]]) # 获得对应索引的元素值
-        D2 = np.column_stack([Y[i2], dist[i2], log_deg_sum[i2], fea_cos[i2]]) # 获得对应索引的元素值
+        D1 = np.column_stack([Y0[i1], dist[i1], log_deg_sum[i1], fea_cos[i1]]) # 获得对应索引的元素值
+        B2 = draw1.toarray().astype(int) if isspmatrix(draw1) else draw1.astype(int) # B2: 随机对称矩阵
+        i2 = np.tril((A-B2)<0, k=-1) # 下三角的索引(bool)：相当于随机选取3%的yijt=0的边
+        D2 = np.column_stack([Y0[i2], dist[i2], log_deg_sum[i2], fea_cos[i2]])
+
         moment2 = Stat(D1, D2)
         moment2_list.append(moment2)
-
-    else:
-        for p in range(1, period):
-            Y0 = network[p - 1].toarray() if isspmatrix(network[p - 1]) else network[p - 1]
-            Y = network[p].toarray() if isspmatrix(network[p]) else network[p]
-            deg = np.sum(Y0, axis=1)
-            log_deg = np.log1p(deg)
-            log_deg_sum = log_deg[:, None] + log_deg[None, :] # 每个节点对的联合强度：log(1+di)+log(1+dj)
-
-            adj = csr_matrix(Y0)
-            dist = shortest_path(adj, method='D', directed=False)  # shape = (n, n)
-            dist = 1 - 1 / (1 + dist)
-            fea_cos = cosine_similarity(feature)
-
-            # lower triangular indices
-            A = Y.astype(int)
-            i1 = np.tril(A>0, k=-1)
-            D1 = np.column_stack([Y0[i1], dist[i1], log_deg_sum[i1], fea_cos[i1]]) # 获得对应索引的元素值
-            B2 = draw1.toarray().astype(int) if isspmatrix(draw1) else draw1.astype(int) # B2: 随机对称矩阵
-            i2 = np.tril((A-B2)<0, k=-1) # 下三角的索引(bool)：相当于随机选取3%的yijt=0的边
-            D2 = np.column_stack([Y0[i2], dist[i2], log_deg_sum[i2], fea_cos[i2]])
-
-            moment2 = Stat(D1, D2)
-            moment2_list.append(moment2)
 
     # 合并 moment1, moment2
     moment1_array = np.vstack(moment1_list)
