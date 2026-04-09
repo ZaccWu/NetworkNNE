@@ -11,8 +11,43 @@ import pickle
 from Test_error_summary import Test_error_summary
 import sys
 import argparse
+import shap
 import warnings
 warnings.filterwarnings("ignore")
+
+
+def _run_shapley_analysis(net, input_train, input_test):
+    # Limit sample size to keep SHAP runtime manageable.
+    bg_n = min(len(input_train), max(1, 128))
+    ev_n = min(len(input_test), max(1, 256))
+    bg_idx = np.random.choice(len(input_train), size=bg_n, replace=False)
+    ev_idx = np.random.choice(len(input_test), size=ev_n, replace=False)
+    background = torch.tensor(input_train[bg_idx], dtype=torch.float32)
+    eval_x = torch.tensor(input_test[ev_idx], dtype=torch.float32)
+
+    net.eval()
+    with torch.no_grad():
+        pred_dim = net(eval_x[:1]).shape[1]
+
+    target_idx = int(np.clip(0, 0, pred_dim - 1))
+    explainer = shap.DeepExplainer(net, background)
+    shap_values = explainer.shap_values(eval_x)
+
+    if isinstance(shap_values, list):
+        # Multi-output model: pick one output dimension to explain.
+        shap_matrix = np.array(shap_values[target_idx])
+    else:
+        shap_matrix = np.array(shap_values)
+        if shap_matrix.ndim == 3:
+            shap_matrix = shap_matrix[:, :, target_idx]
+
+    importance = np.mean(np.abs(shap_matrix), axis=0)
+    order = np.argsort(-importance)
+    top_k = min(max(1, 10), len(importance))
+
+    print(f"\nSHAP feature importance (target output idx={target_idx}, top {top_k}):")
+    for rank, feat_idx in enumerate(order[:top_k], start=1):
+        print(f"{rank:>2}. x{feat_idx:<3} | mean(|SHAP|) = {importance[feat_idx]:.6g}")
 
 def getTrainArgs():
     parser = argparse.ArgumentParser('nneTrain')
@@ -23,6 +58,7 @@ def getTrainArgs():
     parser.add_argument('--initial_lr', type=int, help='initial learning rate', default=0.01)   # 0.01
 
     # display settings
+    parser.add_argument('--enable_shapley', type=bool, help='shapley value analysis', default=True)
     parser.add_argument('--disp_test_summary', type=bool, help='display test summary', default=True)
     parser.add_argument('--display_fig', type=bool, help='display figure', default=True)
     parser.add_argument('--disp_iter', type=bool, help='display iteration', default=True)
@@ -142,6 +178,9 @@ def nne_train(data, args):
             test_preds = net(torch.tensor(input_test, dtype=torch.float32))
             Test_error_summary(torch.tensor(input_test, dtype=torch.float32), label_test, label_name, net, figure=args.display_fig, table=1)
 
+    if args.enable_shapley:
+        _run_shapley_analysis(net, input_train, input_test)
+
     # Estimate on original data
     net.eval()
     with torch.no_grad():
@@ -149,20 +188,17 @@ def nne_train(data, args):
 
     # 截断 theta
     theta = np.clip(temp[:L], lb, ub)
-
+    print(theta)
     # 正向变换标准误（如果学习）
     if args.learn_standard_error:
         se = Positive_transform(temp[L:2 * L])
-
-    print(theta)
-    print(se)
+        print(se)
 
 
 if __name__ == "__main__":
-    #with open('simu_data_collect/model2_peerf/R=10000,U+tau/training_set_gen_peerf.pkl', 'rb') as f:
-    #with open('simu_data_collect/model3_speer/R=10000, 0.33<rho<3/training_set_gen.pkl', 'rb') as f:
     args = getTrainArgs()
-    with open('training_set_gen_peerf.pkl', 'rb') as f:  # data from "set_up.py"
+    with open('results/results-20260409//training_set_gen_p2.pkl', 'rb') as f:
+    #with open('training_set_gen_peerf.pkl', 'rb') as f:  # data from "set_up.py"
         data = pickle.load(f)
     set_train_seed(101)
     nne_train(data, args)
