@@ -23,7 +23,7 @@ except:
 def set_beta():
     bounds = [
         [-2.5, -3, -2, r'\lambda_f'],
-        [12, 5, 15, r'\alpha_f'],
+        [9, 3, 12, r'\alpha_f'],
         [1, 0, 2, r'\beta_f'],  # beta (default: 1, 0, 2)
         [4, 0, 10, r'\delta_f'],  # delta # check here
         [0.75, 0, 1, r'\theta_f'],  # theta
@@ -44,7 +44,7 @@ def set_up():
     label_name = bounds[:, 3].tolist()
 
     n = 2511  # num of individual
-    period = 4
+    period = 2
     econmodel = PeerModelwithFeature(n, period)
     network, feature = econmodel.get_data(theta)
     PeerDataDescriptive(network)
