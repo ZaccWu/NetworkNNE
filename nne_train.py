@@ -13,6 +13,7 @@ import sys
 import argparse
 import shap
 import warnings
+import matplotlib.pyplot as plt
 warnings.filterwarnings("ignore")
 
 
@@ -43,11 +44,94 @@ def _run_shapley_analysis(net, input_train, input_test):
 
     importance = np.mean(np.abs(shap_matrix), axis=0)
     order = np.argsort(-importance)
-    top_k = min(max(1, 10), len(importance))
+    top_k = min(max(1, 15), len(importance))
 
     print(f"\nSHAP feature importance (target output idx={target_idx}, top {top_k}):")
     for rank, feat_idx in enumerate(order[:top_k], start=1):
         print(f"{rank:>2}. x{feat_idx:<3} | mean(|SHAP|) = {importance[feat_idx]:.6g}")
+
+    # 1. SHAP 摘要图
+    plt.figure(figsize=(10, 6))
+    shap.summary_plot(shap_values, eval_x, plot_type="dot")
+    plt.title("SHAP Summary Plot (Beeswarm)")
+    plt.show()
+
+    # 2. 特征重要性条形图
+    indices = order[:top_k]
+    labels = [f"x{idx}" for idx in indices] # 如果有特征名称，可以替换这里
+    values = importance[indices]
+
+    plt.figure(figsize=(10, 6))
+    plt.barh(range(len(values)), values[::-1]) # 倒序排列，最大的在上面
+    plt.yticks(range(len(values)), [f"x{idx}" for idx in indices[::-1]])
+    plt.xlabel("Mean(|SHAP Value|)")
+    plt.title(f"Top {top_k} Feature Importance")
+    plt.grid(axis='x', linestyle='--', alpha=0.5)
+    plt.tight_layout()
+    plt.show()
+
+    # 3. 依赖关系图
+    top_feature_idx = order[0] 
+
+    plt.figure(figsize=(8, 6))
+    # eval_x[:, top_feature_idx] 取出该特征的列
+    # shap_values[:, top_feature_idx] 取出该特征对应的 SHAP 值列
+    shap.dependence_plot(
+        top_feature_idx, 
+        shap_values, 
+        eval_x,
+        show=False # 设置为 False 以便使用 plt.show() 控制显示
+    )
+    plt.title(f"SHAP Dependence Plot for Feature x{top_feature_idx}")
+    plt.tight_layout()
+    plt.show()
+
+    #  4. 单样本力图
+    # 选取 eval_x 中的第一个样本进行解释
+    sample_idx = 0
+    sample_data = eval_x[sample_idx:sample_idx+1] # 保持 2D 形状 (1, features)
+    sample_shap = shap_matrix[sample_idx:sample_idx+1]
+
+    # 计算基准值 (背景数据的平均预测值)
+    # 注意：DeepExplainer 的 expected_value 通常可以通过 explainer.expected_value 获取
+    # 如果获取不到，可以用背景数据的平均预测值近似
+    try:
+        expected_value = explainer.expected_value
+        if isinstance(expected_value, list):
+            expected_value = expected_value[target_idx]
+    except:
+        expected_value = 0 #  fallback
+
+    plt.figure(figsize=(10, 4))
+    shap.initjs() # 如果需要交互式图表（在 Jupyter 中）
+    shap.force_plot(expected_value, sample_shap, sample_data, matplotlib=True)
+    plt.title(f"SHAP Force Plot for Sample Index {sample_idx}")
+    plt.show()
+
+    # 5. 热力图
+    # 为了可视化效果，通常只对最重要的特征画图
+    top_k_features = 20
+    top_indices = order[:top_k_features]
+
+    # 提取子矩阵
+    shap_matrix_subset = shap_matrix[:, top_indices]
+
+    plt.figure(figsize=(12, 8))
+    # 对样本进行聚类或排序（可选，这里按 SHAP 值总和排序以便观察）
+    row_order = np.argsort(np.sum(np.abs(shap_matrix_subset), axis=1))[::-1]
+
+    sns.heatmap(shap_matrix_subset[row_order], 
+                cmap="RdBu_r", # 红蓝配色，红正蓝负
+                center=0,
+                xticklabels=[f"x{i}" for i in top_indices],
+                yticklabels=False) # 样本太多时不显示 y 轴标签
+
+    plt.xlabel("Features")
+    plt.ylabel("Samples (Sorted)")
+    plt.title(f"SHAP Values Heatmap (Top {top_k_features} Features)")
+    plt.tight_layout()
+    plt.show()
+
 
 def getTrainArgs():
     parser = argparse.ArgumentParser('nneTrain')
