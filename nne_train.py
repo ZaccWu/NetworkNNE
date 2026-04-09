@@ -20,12 +20,12 @@ warnings.filterwarnings("ignore")
 
 def _run_shapley_analysis(net, input_train, input_test):
     # Limit sample size to keep SHAP runtime manageable.
-    bg_n = min(len(input_train), max(1, 128))
-    ev_n = min(len(input_test), max(1, 256))
+    bg_n = min(len(input_train), max(1, 500))
+    ev_n = len(input_test)
     bg_idx = np.random.choice(len(input_train), size=bg_n, replace=False)
     ev_idx = np.random.choice(len(input_test), size=ev_n, replace=False)
-    background = torch.tensor(input_train[bg_idx], dtype=torch.float32) # (128, 38)
-    eval_x = torch.tensor(input_test[ev_idx], dtype=torch.float32)  # (256, 38)
+    background = torch.tensor(input_train[bg_idx], dtype=torch.float32) # (500, 38)
+    eval_x = torch.tensor(input_test[ev_idx], dtype=torch.float32)  # (N_test, 38)
 
     net.eval()
     with torch.no_grad():
@@ -33,7 +33,7 @@ def _run_shapley_analysis(net, input_train, input_test):
 
     target_idx = int(np.clip(0, 0, pred_dim - 1))  # 0
     explainer = shap.DeepExplainer(net, background)
-    shap_values = explainer.shap_values(eval_x) # (256, 38, 7)
+    shap_values = explainer.shap_values(eval_x) # (N_test, 38, 7)
 
     if isinstance(shap_values, list):
         # Multi-output model: pick one output dimension to explain.
@@ -43,7 +43,7 @@ def _run_shapley_analysis(net, input_train, input_test):
         if shap_matrix.ndim == 3:
             shap_matrix = shap_matrix[:, :, target_idx]
     
-    # shap_matrix: (256, 38)
+    # shap_matrix: (N_test, 38)
 
     importance = np.mean(np.abs(shap_matrix), axis=0)
     order = np.argsort(-importance)
@@ -79,7 +79,7 @@ def _run_shapley_analysis(net, input_train, input_test):
     shap.dependence_plot(
         top_feature_idx, # top_feature_idx
         shap_values[:, :, 0], # parameter at position 0
-        eval_x.numpy()  # shape (256, 38)
+        eval_x.numpy()  # shape (N_test, 38)
     )
 
     #  4. 单样本力图
@@ -99,7 +99,7 @@ def _run_shapley_analysis(net, input_train, input_test):
     shap.force_plot(
         base_value,          # 第一个参数必须是 base value
         sample_shap.flatten(),         # 该样本的 SHAP 向量 (38)
-        sample_data.flatten(),         # 该样本特征 torch.Size([38])
+        sample_data.numpy().flatten(),         # 该样本特征 torch.Size([38])
         matplotlib=True,
     )
     
@@ -133,7 +133,7 @@ def getTrainArgs():
     # neural network algorithm/training settings
     parser.add_argument('--num_nodes', type=int, help='layer width', default=128)   # 128
     parser.add_argument('--batch_size', type=int, help='training sample batch', default=32)    # 256
-    parser.add_argument('--max_epochs', type=int, help='training epoches', default=10)         # 100
+    parser.add_argument('--max_epochs', type=int, help='training epoches', default=100)         # 100
     parser.add_argument('--initial_lr', type=int, help='initial learning rate', default=0.01)   # 0.01
 
     # display settings
