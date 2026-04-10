@@ -22,11 +22,11 @@ except:
 
 def set_beta():
     bounds = [
-        [-2.5, -3, -2, r'\lambda_f'],
+        [-2.5, -3, -2, r'\c_f'],
         [9, 3, 12, r'\alpha_f'],
         [1, 0, 2, r'\beta_f'],  # beta (default: 1, 0, 2)
         [4, 0, 10, r'\delta_f'],  # delta # check here
-        [0.75, 0, 1, r'\theta_f'],  # theta
+        [0.75, 0, 1, r'\lambda_f'],  # theta
         [0.25, 0, 1, r'\gamma_f'],  # gamma # check here
         [4, 1, 5, r'\tau']  # tau
     ]

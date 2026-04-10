@@ -10,11 +10,11 @@ class PeerModelwithFeature():
         self.period = period
 
     def get_data(self, theta):
-        self.beta0 = theta[0]   # lambda_f
+        self.beta0 = theta[0]   # c_f
         self.beta1 = theta[1]   # alpha_f
         self.beta2 = theta[2]   # beta_f
         self.beta3 = theta[3]   # delta_f
-        self.beta4 = theta[4]   # theta_f
+        self.beta4 = theta[4]   # lambda_f
         self.beta5 = theta[5]   # gamma_f
         self.tau = int(round(theta[6]))
 
