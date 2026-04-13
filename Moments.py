@@ -4,12 +4,16 @@ from scipy.sparse import triu as sparse_triu
 from Clustering_global import Clustering_global
 from scipy.sparse.csgraph import shortest_path
 from sklearn.metrics.pairwise import cosine_similarity
-from scipy.sparse.csgraph import laplacian
-from scipy.sparse.linalg import spsolve
-from scipy.sparse import eye
-from scipy.sparse.linalg import expm
+from scipy.sparse import identity
+from scipy.sparse.linalg import eigs
 
-
+def katz_matrix_fast(A: csr_matrix, alpha: float):
+    N = A.shape[0]
+    rho = np.abs(eigs(A, k=1, return_eigenvectors=False)[0]) # (I - αA)^{-1}
+    if alpha >= 1.0 / rho:
+        raise ValueError(f"alpha should be (0,1)")
+    M = identity(N, format='csr') - alpha * A
+    return np.linalg.inv(M.toarray())
 
 # calculate data moments of Peer Model DGP
 def PeerFeatureMoments(network, feature):
@@ -43,15 +47,18 @@ def PeerFeatureMoments(network, feature):
         adj = csr_matrix(Y0)
         dist = shortest_path(adj, method='D', directed=False)  # shape = (n, n)
         dist = 1 - 1 / (1 + dist)
+
+        dist1 = katz_matrix_fast(adj, alpha=0.9/(np.max(deg)+1))
+        dist1 = 1 - 1 / (1 + dist1)
         fea_cos = cosine_similarity(feature)
 
         # lower triangular indices
         A = Y.astype(int)
         i1 = np.tril(A>0, k=-1)
-        D1 = np.column_stack([Y0[i1], dist[i1], log_deg_sum[i1], fea_cos[i1]]) # 获得对应索引的元素值
+        D1 = np.column_stack([Y0[i1], dist[i1], dist1[i1], log_deg_sum[i1], fea_cos[i1]]) # 获得对应索引的元素值
         B2 = draw1.toarray().astype(int) if isspmatrix(draw1) else draw1.astype(int) # B2: 随机对称矩阵
         i2 = np.tril((A-B2)<0, k=-1) # 下三角的索引(bool)：相当于随机选取3%的yijt=0的边
-        D2 = np.column_stack([Y0[i2], dist[i2], log_deg_sum[i2], fea_cos[i2]])
+        D2 = np.column_stack([Y0[i2], dist[i2], dist1[i2], log_deg_sum[i2], fea_cos[i2]])
 
         moment2 = Stat(D1, D2)
         moment2_list.append(moment2)
