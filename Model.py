@@ -5,7 +5,6 @@ from scipy.stats import poisson, expon
 class PeerModelwithFeature():
     def __init__(self, n, period, *args):
         super(PeerModelwithFeature, self).__init__()
-        self.ceiling = 50
         self.n = n
         self.period = period
 

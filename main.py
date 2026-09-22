@@ -37,16 +37,6 @@ def main():
     except Exception:
         desc = None
 
-    try:
-        cluster = clustering_global(net[0] if net else None)
-    except Exception:
-        cluster = None
-
-    # summary
-    try:
-        Test_error_summary({'net': net, 'guild': guild, 'track': track})
-    except Exception:
-        pass
 
     return net, guild, track
 

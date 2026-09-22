@@ -1,11 +1,13 @@
 import numpy as np
 from scipy.sparse import csr_matrix, tril, isspmatrix
 from scipy.sparse import triu as sparse_triu
-from Clustering_global import Clustering_global
+
 from scipy.sparse.csgraph import shortest_path
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.sparse import identity
 from scipy.sparse.linalg import eigs
+from scipy.sparse import issparse
+
 
 def katz_matrix_fast(A: csr_matrix, alpha: float):
     N = A.shape[0]
@@ -14,6 +16,21 @@ def katz_matrix_fast(A: csr_matrix, alpha: float):
         raise ValueError(f"alpha should be (0,1)")
     M = identity(N, format='csr') - alpha * A
     return np.linalg.inv(M.toarray())
+
+def Clustering_global(Y):
+    if issparse(Y):
+        Y2_sparse = Y @ Y   # using sparse matrix for light computation
+        Y2_sparse.setdiag(0)
+        numerator = Y2_sparse.multiply(Y).sum()
+        denominator = Y2_sparse.sum()
+        Y2_return = Y2_sparse
+    else:
+        raise ValueError("Y is not a sparse matrix")
+    globalcoef = float(numerator) / float(denominator) if denominator != 0 else 0.0
+    if np.isnan(globalcoef):
+        globalcoef = 0.0
+    return globalcoef, Y2_return
+
 
 # calculate data moments of Peer Model DGP
 def PeerFeatureMoments(network, feature):

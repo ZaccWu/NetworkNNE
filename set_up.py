@@ -1,13 +1,13 @@
 import numpy as np
 import time
 import pickle
-from Model import PeerModelwithFeature
-from Descriptive import PeerDataDescriptive
 import sys
 import argparse
 import warnings
 warnings.filterwarnings("ignore")
 
+from utils.analysis import PeerDataDescriptive
+from Model import PeerModelwithFeature
 
 parser = argparse.ArgumentParser('SetUp')
 # 'peer' or 'peer+community'

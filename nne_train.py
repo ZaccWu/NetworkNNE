@@ -4,128 +4,21 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
-from Positive_transform import Positive_transform
+
 from sklearn.preprocessing import StandardScaler
-from normalRegressionLayer import NormalRegressionLayer
 import pickle
-from Test_error_summary import Test_error_summary
 import sys
 import argparse
-import shap
+
 import warnings
 import matplotlib.pyplot as plt
 import seaborn as sns
+
+from utils.functional import Positive_transform
+from utils.analysis import Test_error_summary, run_shapley_analysis
+
 warnings.filterwarnings("ignore")
 
-
-def _run_shapley_analysis(net, input_train, input_test):
-    # Limit sample size to keep SHAP runtime manageable.
-    bg_n = min(len(input_train), max(1, 500))
-    ev_n = len(input_test)
-    bg_idx = np.random.choice(len(input_train), size=bg_n, replace=False)
-    ev_idx = np.random.choice(len(input_test), size=ev_n, replace=False)
-    background = torch.tensor(input_train[bg_idx], dtype=torch.float32) # (500, 38)
-    eval_x = torch.tensor(input_test[ev_idx], dtype=torch.float32)  # (N_test, 38)
-
-    net.eval()
-    with torch.no_grad():
-        pred_dim = net(eval_x[:1]).shape[1] # 7
-
-    target_idx = int(np.clip(0, 0, pred_dim - 1))  # 0
-    explainer = shap.DeepExplainer(net, background)
-    shap_values = explainer.shap_values(eval_x) # (N_test, 38, 7)
-
-    if isinstance(shap_values, list):
-        # Multi-output model: pick one output dimension to explain.
-        shap_matrix = np.array(shap_values[target_idx])
-    else:
-        shap_matrix = np.array(shap_values)
-        if shap_matrix.ndim == 3:
-            shap_matrix = shap_matrix[:, :, target_idx]
-    
-    # shap_matrix: (N_test, 38)
-
-    importance = np.mean(np.abs(shap_matrix), axis=0)
-    order = np.argsort(-importance)
-    top_k = min(max(1, 15), len(importance))
-
-    print(f"\nSHAP feature importance (target output idx={target_idx}, top {top_k}):")
-    for rank, feat_idx in enumerate(order[:top_k], start=1):
-        print(f"{rank:>2}. x{feat_idx:<3} | mean(|SHAP|) = {importance[feat_idx]:.6g}")
-
-    # 1. SHAP 摘要图
-    shap.summary_plot(shap_values, eval_x, plot_type="bar", show=True)
-    shap.summary_plot(shap_values, eval_x, plot_type="dot", show=True)
-
-
-    # 2. 特征重要性条形图
-    indices = order[:top_k]
-    labels = [f"x{idx}" for idx in indices] # 如果有特征名称，可以替换这里
-    values = importance[indices]
-
-    plt.figure(figsize=(10, 6))
-    plt.barh(range(len(values)), values[::-1]) # 倒序排列，最大的在上面
-    plt.yticks(range(len(values)), [f"x{idx}" for idx in indices[::-1]])
-    plt.xlabel("Mean(|SHAP Value|)")
-    plt.title(f"Top {top_k} Feature Importance")
-    plt.grid(axis='x', linestyle='--', alpha=0.5)
-    plt.tight_layout()
-    plt.show()
-
-    # 3. 依赖关系图
-    top_feature_idx = order[0] 
-    # eval_x[:, top_feature_idx] 取出该特征的列
-    # shap_values[:, top_feature_idx] 取出该特征对应的 SHAP 值列
-    shap.dependence_plot(
-        top_feature_idx, # top_feature_idx
-        shap_values[:, :, 0], # parameter at position 0
-        eval_x.numpy()  # shape (N_test, 38)
-    )
-
-    #  4. 单样本力图
-    # 选取 eval_x 中的第一个样本进行解释
-    sample_idx = 0
-    sample_data = eval_x[sample_idx:sample_idx+1,:]
-    sample_shap = shap_matrix[sample_idx:sample_idx+1,:]
-
-    # base value（多输出时取 target_idx）
-    base = explainer.expected_value
-    if isinstance(base, (list, tuple, np.ndarray)):
-        base_value = float(np.array(base).reshape(-1)[target_idx])
-    else:
-        base_value = float(base)
-
-
-    shap.force_plot(
-        base_value,          # 第一个参数必须是 base value
-        sample_shap.flatten(),         # 该样本的 SHAP 向量 (38)
-        sample_data.numpy().flatten(),         # 该样本特征 torch.Size([38])
-        matplotlib=True,
-    )
-    
-    # 5. 热力图
-    # 为了可视化效果，通常只对最重要的特征画图
-    top_k_features = 20
-    top_indices = order[:top_k_features]
-
-    # 提取子矩阵
-    shap_matrix_subset = shap_matrix[:, top_indices]
-
-    plt.figure(figsize=(12, 8))
-    # 对样本进行聚类或排序（可选，这里按 SHAP 值总和排序以便观察）
-    row_order = np.argsort(np.sum(np.abs(shap_matrix_subset), axis=1))[::-1]
-
-    sns.heatmap(shap_matrix_subset[row_order], 
-                cmap="RdBu_r", # 红蓝配色，红正蓝负
-                center=0,
-                xticklabels=[f"x{i}" for i in top_indices],
-                yticklabels=False) # 样本太多时不显示 y 轴标签
-
-    plt.xlabel("Features")
-    plt.ylabel("Samples (Sorted)")
-    plt.title(f"SHAP Values Heatmap (Top {top_k_features} Features)")
-    plt.tight_layout()
-    plt.show()
 
 
 def getTrainArgs():
@@ -137,9 +30,9 @@ def getTrainArgs():
     parser.add_argument('--initial_lr', type=int, help='initial learning rate', default=0.01)   # 0.01
 
     # display settings
-    parser.add_argument('--enable_shapley', type=bool, help='shapley value analysis', default=True)
+    parser.add_argument('--enable_shapley', type=bool, help='shapley value analysis', default=False)
     parser.add_argument('--disp_test_summary', type=bool, help='display test summary', default=True)
-    parser.add_argument('--display_fig', type=bool, help='display figure', default=False) # True
+    parser.add_argument('--display_fig', type=bool, help='display figure', default=True) # True
     parser.add_argument('--disp_iter', type=bool, help='display iteration', default=True)
     parser.add_argument('--learn_standard_error', type=bool, help='learn standard error', default=False)
 
@@ -258,7 +151,7 @@ def nne_train(data, args):
             Test_error_summary(torch.tensor(input_test, dtype=torch.float32), label_test, label_name, net, figure=args.display_fig, table=1)
 
     if args.enable_shapley:
-        _run_shapley_analysis(net, input_train, input_test)
+        run_shapley_analysis(net, input_train, input_test)
 
     # Estimate on original data
     net.eval()
