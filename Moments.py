@@ -33,58 +33,92 @@ def Clustering_global(Y):
 
 
 # calculate data moments of Peer Model DGP
-def PeerFeatureMoments(network, feature):
-    n = network[0].shape[0]
-    period = len(network)
-    draw1 = (csr_matrix(np.random.rand(n, n) < 0.03)).astype(bool) # 生成随机稀疏矩阵 (元素有3%概率为正)
-    draw1 = draw1 + draw1.T  # 对称
-    moment1_list, moment2_list = [], []
 
-    # --- moment1: period-wise statistics ---
-    for p in range(period):
-        Y = network[p]
-        deg = np.array(Y.sum(axis=1).A1).flatten()  # 求和+转成 长度 n 的一维 numpy array
+class FormationIFMoments():
+    def __init__(self):
+        super(FormationIFMoments, self).__init__()
+
+    def getMoments(self, network, feature):
+        n = network[0].shape[0]
+        period = len(network)
+        draw1 = (csr_matrix(np.random.rand(n, n) < 0.03)).astype(bool) # 生成随机稀疏矩阵 (元素有3%概率为正)
+        draw1 = draw1 + draw1.T  # 对称
+        moment1_list, moment2_list = [], []
+
+        # --- moment1: period-wise statistics ---
+        for p in range(period):
+            A = network[p]
+            deg = np.array(A.sum(axis=1).A1).flatten()  # 求和+转成 长度 n 的一维 numpy array
+            moment1 = np.array([
+                np.mean(deg),
+                np.var(deg),
+                np.mean(feature.squeeze(-1)), # add peer features
+                np.var(feature.squeeze(-1)),  # add peer features
+                Clustering_global(A)[0],
+            ])
+            moment1_list.append(moment1)
+
+        # --- moment2: cross-period statistics ---
+        for p in range(1, period):
+            A0 = network[p - 1].toarray() if isspmatrix(network[p - 1]) else network[p - 1]
+            A = network[p].toarray() if isspmatrix(network[p]) else network[p]
+            deg = np.sum(A0, axis=1)
+            log_deg = np.log1p(deg)
+            log_deg_sum = log_deg[:, None] + log_deg[None, :] # 每个节点对的联合强度：log(1+di)+log(1+dj)
+
+            adj = csr_matrix(A0)
+            dist = shortest_path(adj, method='D', directed=False)  # shape = (n, n)
+            dist = 1 - 1 / (1 + dist)
+
+            dist1 = katz_matrix_fast(adj, alpha=0.9/(np.max(deg)+1))
+            dist1 = 1 - 1 / (1 + dist1)
+            fea_cos = cosine_similarity(feature)
+
+            # lower triangular indices
+            MA = A.astype(int)
+            i1 = np.tril(MA>0, k=-1)
+            D1 = np.column_stack([A0[i1], dist[i1], dist1[i1], log_deg_sum[i1], fea_cos[i1]]) # 获得对应索引的元素值
+            B2 = draw1.toarray().astype(int) if isspmatrix(draw1) else draw1.astype(int) # B2: 随机对称矩阵
+            i2 = np.tril((MA-B2)<0, k=-1) # 下三角的索引(bool)：相当于随机选取3%的yijt=0的边
+            D2 = np.column_stack([A0[i2], dist[i2], dist1[i2], log_deg_sum[i2], fea_cos[i2]])
+
+            moment2 = Stat(D1, D2)
+            moment2_list.append(moment2)
+
+        # 合并 moment1, moment2
+        moment1_array = np.vstack(moment1_list)
+        moment2_array = np.mean(np.vstack(moment2_list), axis=0)
+        moment = np.hstack([moment1_array.flatten(), moment2_array])
+        return moment
+
+
+
+
+class PeerIMoments():
+    def __init__(self):
+        super(PeerIMoments, self).__init__()
+
+    def getMoments(self, network, feature):
+        n = network.shape[0]
+        A = network
+        y0, y = feature[0], feature[1]
+        moment1_list = []
+        deg = np.array(A.sum(axis=1).A1).flatten()  # 求和+转成 长度 n 的一维 numpy array
         moment1 = np.array([
             np.mean(deg),
             np.var(deg),
-            np.mean(feature.squeeze(-1)), # add peer features
-            np.var(feature.squeeze(-1)),  # add peer features
-            Clustering_global(Y)[0],
+            np.mean(y0.squeeze(-1)), # add peer features
+            np.var(y0.squeeze(-1)),  # add peer features
+            np.mean(y.squeeze(-1)), # add peer features
+            np.var(y.squeeze(-1)),  # add peer features
+            Clustering_global(A)[0],
         ])
         moment1_list.append(moment1)
+        moment1_array = np.vstack(moment1_list)
+        moment = np.hstack([moment1_array.flatten()])
+        return moment
 
-    # --- moment2: cross-period statistics ---
-    for p in range(1, period):
-        Y0 = network[p - 1].toarray() if isspmatrix(network[p - 1]) else network[p - 1]
-        Y = network[p].toarray() if isspmatrix(network[p]) else network[p]
-        deg = np.sum(Y0, axis=1)
-        log_deg = np.log1p(deg)
-        log_deg_sum = log_deg[:, None] + log_deg[None, :] # 每个节点对的联合强度：log(1+di)+log(1+dj)
 
-        adj = csr_matrix(Y0)
-        dist = shortest_path(adj, method='D', directed=False)  # shape = (n, n)
-        dist = 1 - 1 / (1 + dist)
-
-        dist1 = katz_matrix_fast(adj, alpha=0.9/(np.max(deg)+1))
-        dist1 = 1 - 1 / (1 + dist1)
-        fea_cos = cosine_similarity(feature)
-
-        # lower triangular indices
-        A = Y.astype(int)
-        i1 = np.tril(A>0, k=-1)
-        D1 = np.column_stack([Y0[i1], dist[i1], dist1[i1], log_deg_sum[i1], fea_cos[i1]]) # 获得对应索引的元素值
-        B2 = draw1.toarray().astype(int) if isspmatrix(draw1) else draw1.astype(int) # B2: 随机对称矩阵
-        i2 = np.tril((A-B2)<0, k=-1) # 下三角的索引(bool)：相当于随机选取3%的yijt=0的边
-        D2 = np.column_stack([Y0[i2], dist[i2], dist1[i2], log_deg_sum[i2], fea_cos[i2]])
-
-        moment2 = Stat(D1, D2)
-        moment2_list.append(moment2)
-
-    # 合并 moment1, moment2
-    moment1_array = np.vstack(moment1_list)
-    moment2_array = np.mean(np.vstack(moment2_list), axis=0)
-    moment = np.hstack([moment1_array.flatten(), moment2_array])
-    return moment
 
 # ----------------------------
 # Stat function

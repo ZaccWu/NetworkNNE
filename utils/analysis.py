@@ -9,38 +9,49 @@ from scipy.sparse import issparse
 import shap
 from .functional import Positive_transform
 
+class FormationIFDtDescriptive():
+    def __init__(self):
+        super(FormationIFDtDescriptive, self).__init__()
 
+    def getDescriptive(self, network):
+        n, period = network[0].shape[0], len(network)
+        stat = pd.DataFrame({
+            'period': np.arange(1, period+1),
+            'net_density': np.nan,
+            'net_max_deg': np.nan,
+        }) # Initialize DataFrame
+        # Compute statistics for each period
+        for p in range(period):
+            A = network[p].toarray() if issparse(network[p]) else network[p]
+            stat.at[p, 'net_density'] = np.count_nonzero(A) / (n * (n - 1))
+            stat.at[p, 'net_max_deg'] = np.max(np.sum(A, axis=1))
+        # Round to 3 significant figures
+        stat.iloc[:, 1:] = stat.iloc[:, 1:].apply(lambda x: np.round(x, 3))
+        print(stat)
 
-def PeerDataDescriptive(network):
-    """
-    Compute descriptive statistics for network and guild over multiple periods.
-    Returns a pandas DataFrame similar to MATLAB table.
-    """
-    n = network[0].shape[0]
-    period = len(network)
+class PeerIDtDescriptive():
+    def __init__(self):
+        super(PeerIDtDescriptive, self).__init__()
 
-    # Initialize DataFrame
-    stat = pd.DataFrame({
-        'period': np.arange(1, period+1),
-        'net_density': np.nan,
-        'net_max_deg': np.nan,
-    })
-    # Compute statistics for each period
-    for p in range(period):
-        Y = network[p].toarray() if issparse(network[p]) else network[p]
-        stat.at[p, 'net_density'] = np.count_nonzero(Y) / (n * (n - 1))
-        stat.at[p, 'net_max_deg'] = np.max(np.sum(Y, axis=1))
-    # Round to 3 significant figures
-    stat.iloc[:, 1:] = stat.iloc[:, 1:].apply(lambda x: np.round(x, 3))
-    print(stat)
-    return stat
+    def getDescriptive(self, network, feature):
+        n = network.shape[0]
+        y0, y = feature[0].squeeze(-1), feature[1].squeeze(-1)
+        A = network.toarray() if issparse(network) else network
+        stat = pd.DataFrame({
+            'net_density': np.count_nonzero(A) / (n * (n - 1)),
+            'net_max_deg': np.max(np.sum(A, axis=1)),
+            'μ(y0)': np.mean(y0),
+            'σ(y0)': np.std(y0),
+            'μ(y)': np.mean(y),
+            'σ(y)': np.std(y),
+        }, index=[0])
+        stat.iloc[:, 1:] = stat.iloc[:, 1:].apply(lambda x: np.round(x, 3))
+        print(stat)
 
 
 def Test_error_summary(input_test, label_test, label_name, net, figure=True, table=True):
     n, k = label_test.shape # num of samples, num of output_dim
     m = len(label_name)     # num of parameters
-
-    # Determine label mode
     if m == k:
         mode = 1
     elif 2*m == k:
