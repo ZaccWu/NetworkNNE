@@ -76,8 +76,8 @@ class PeerIModel(): # Peer influence model
         self.n = n
 
     def get_data(self, theta):
-        self.beta0 = theta[0]   # c_f
-        self.beta_w = theta[1]   # alpha
+        self.beta0 = theta[0]   # network formation
+        self.beta_w = theta[1]   # network formation
         self.alpha0 = theta[2]  
         self.alpha_p = theta[3]
         self.alpha_w = theta[4]
@@ -119,5 +119,5 @@ class PeerIModel(): # Peer influence model
             + self.alpha_w * w
             + self.alpha_p * peer_avg
         )
-        return network, [y0, y]
+        return network, [y0, y, peer_avg]
 

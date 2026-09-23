@@ -14,10 +14,10 @@ from Model import FormationIFModel, PeerIModel
 def get_args():
     parser = argparse.ArgumentParser('SetUp')
     # 'peer' or 'peer+community'
-    parser.add_argument('--r', type=int, help='num samples', default=50) # number of parameter sample (default: 5000, try: 10~1e3)
+    parser.add_argument('--r', type=int, help='num samples', default=5000) # number of parameter sample (default: 5000, try: 10~1e3)
     parser.add_argument('--model', type=str, help='econ model', default='pi') # nf: network formation, pi: peer influence
+    parser.add_argument('--printdt', type=bool, help='print simu data detail', default=False)
     return parser.parse_args()
-
 
 
 def set_beta_FormationIF():
@@ -93,9 +93,10 @@ def set_up():
             density = network_simul[0].sum() / n0 / (n0 - 1)
             if rho / 5 < density < rho * 5: 
                 basket_theta[t, :] = theta_sample
-                if args.model == 'nf': descri.getDescriptive(network_simul)
-                elif args.model == 'pi': descri.getDescriptive(network_simul, feature_simul)
-                else: assert ValueError('econ model not specified')
+                if args.printdt:
+                    if args.model == 'nf': descri.getDescriptive(network_simul)
+                    elif args.model == 'pi': descri.getDescriptive(network_simul, feature_simul)
+                    else: assert ValueError('econ model not specified')
 
                 break
         if t%10 == 0:

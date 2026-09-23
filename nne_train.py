@@ -36,12 +36,7 @@ def getTrainArgs():
     parser.add_argument('--disp_iter', type=bool, help='display iteration', default=True)
     parser.add_argument('--learn_standard_error', type=bool, help='learn standard error', default=False)
 
-    try:
-        args = parser.parse_args()  # Pass empty list to ignore kernel args
-        return args
-    except:
-        parser.print_help()
-        sys.exit(0)
+    return parser.parse_args()
     
 
 def set_train_seed(seed):
@@ -81,7 +76,11 @@ def forward_loss(Y, T): # y_pred, y_true
     loss = squared_err.sum() / n
     return loss
 
-def nne_train(data, args):
+def nne_train(data):
+
+    args = getTrainArgs()
+    set_train_seed(101)
+
     # load training/validation/real data
     input_train, label_train = data['input_train'], data['label_train']
     input_test, label_test = data['input_test'], data['label_test']
@@ -138,6 +137,7 @@ def nne_train(data, args):
         net.eval()
         with torch.no_grad():
             test_preds = net(torch.tensor(input_test, dtype=torch.float32))
+            print(test_preds)
             loss_va = criterion(test_preds, torch.tensor(label_test, dtype=torch.float32))
 
         if args.disp_iter:
@@ -168,9 +168,8 @@ def nne_train(data, args):
 
 
 if __name__ == "__main__":
-    args = getTrainArgs()
+    
     #with open('results/results-20260409//training_set_gen_p2.pkl', 'rb') as f:
     with open('training_set_gen.pkl', 'rb') as f:  # data from "set_up.py"
         data = pickle.load(f)
-    set_train_seed(101)
-    nne_train(data, args)
+    nne_train(data)
