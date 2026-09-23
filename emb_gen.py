@@ -22,10 +22,8 @@ def get_args():
     parser.add_argument('--model', type=str, help='econ model', default='pi') # nf: network formation, pi: peer influence
     parser.add_argument('--epoch', type=int, help='total nodes', default=2)
     parser.add_argument('--z_dim', type=int, help='embedding dim', default=32)
+    parser.add_argument('--gpu', type=int, help='gpu', default=0)
     return parser.parse_args()
-
-
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 def Test_error_summary_emb(y_hat, basket_theta, label_name, figure=True, table=True):
@@ -65,6 +63,7 @@ def Test_error_summary_emb(y_hat, basket_theta, label_name, figure=True, table=T
         print("Test results:", result)
 
 def simulate_moment(econmodel, theta):
+    device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
     network_simul, feature_simul = econmodel.get_data(theta)
     A = sp.coo_matrix(network_simul)
     edge_index = torch.tensor(np.array([A.row, A.col]), dtype=torch.long)
@@ -87,7 +86,7 @@ def simulate_moment(econmodel, theta):
         total_loss = 0
         for pos_rw, neg_rw in loader:
             optimizer.zero_grad()
-            loss = embAlgo.loss(pos_rw.to(device), neg_rw.to(device))
+            loss = embAlgo.loss(pos_rw, neg_rw)
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
@@ -108,7 +107,7 @@ def simulate_moment(econmodel, theta):
     return res.params['T']
 
 def emb_gen(data):
-    device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
+    
     basket_theta = data['basket_theta']
     network = data['network']
     feature = data['feature']

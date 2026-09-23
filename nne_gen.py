@@ -40,8 +40,6 @@ def nne_gen(data):
         dtmoments = PeerIMoments()
     else:
         assert ValueError('econ model not specified')
-
-
     
 
     print("Simulating training data...")

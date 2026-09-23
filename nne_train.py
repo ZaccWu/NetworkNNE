@@ -137,7 +137,6 @@ def nne_train(data):
         net.eval()
         with torch.no_grad():
             test_preds = net(torch.tensor(input_test, dtype=torch.float32))
-            print(test_preds)
             loss_va = criterion(test_preds, torch.tensor(label_test, dtype=torch.float32))
 
         if args.disp_iter:
