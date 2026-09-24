@@ -108,7 +108,7 @@ class PeerIModel(): # Peer influence model
         A = sp.csr_matrix(A)
         network = A
 
-        y0 = self.alpha0 + self.alpha_w * w
+        y0 = self.alpha0 + self.alpha_w * w + np.random.normal(loc=0.0, scale=0.2, size=(self.n, 1))
         degree = np.asarray(A.sum(axis=1)).reshape(-1, 1)
         peer_sum = np.asarray(A @ y0).reshape(-1, 1)
         peer_avg = np.zeros_like(y0)
@@ -117,7 +117,7 @@ class PeerIModel(): # Peer influence model
         y = (
             self.alpha0
             + self.alpha_w * w
-            + self.alpha_p * peer_avg
+            + self.alpha_p * peer_avg + np.random.normal(loc=0.0, scale=0.2, size=(self.n, 1))
         )
         return network, [y0, y, peer_avg]
 

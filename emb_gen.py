@@ -50,9 +50,8 @@ def Test_error_summary_emb(y_hat, basket_theta, label_name, figure=True, table=T
 
     # Print result table
     if table:
-        bias = [f"{np.mean(err):.3f} ({np.std(err)/np.sqrt(len(err)):.1f})" for j in range(len(err))]
-        rmse = [f"{np.sqrt(np.mean(err**2)):.3f} ({0.5/np.sqrt(np.mean(err**2))*np.std(err**2)/np.sqrt(len(err)):.1f})"
-                for j in range(len(err))]
+        bias = [f"{np.mean(err):.3f} ({np.std(err)/np.sqrt(len(err)):.1f})"]
+        rmse = [f"{np.sqrt(np.mean(err**2)):.3f} ({0.5/np.sqrt(np.mean(err**2))*np.std(err**2)/np.sqrt(len(err)):.1f})"]
         mean_SD = ["nan"]*len(err)
 
         result = pd.DataFrame({
