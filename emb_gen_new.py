@@ -24,7 +24,7 @@ from Model import PeerIModel
 def get_args():
     parser = argparse.ArgumentParser('nneGen')
     parser.add_argument('--epoch', type=int, help='total epoch', default=50) # 直接优化，可增加 epoch
-    parser.add_argument('--z_dim', type=int, help='embedding dim', default=32) 
+    parser.add_argument('--z_dim', type=int, help='embedding dim', default=64) 
     return parser.parse_args()
 
 
