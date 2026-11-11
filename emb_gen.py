@@ -20,7 +20,7 @@ from Model import PeerIModel
 def get_args():
     parser = argparse.ArgumentParser('nneGen')
     parser.add_argument('--model', type=str, help='econ model', default='pi') # nf: network formation, pi: peer influence
-    parser.add_argument('--epoch', type=int, help='total nodes', default=2)
+    parser.add_argument('--epoch', type=int, help='total epoch', default=50)
     parser.add_argument('--z_dim', type=int, help='embedding dim', default=32)
     parser.add_argument('--gpu', type=int, help='gpu', default=0)
     return parser.parse_args()
@@ -28,22 +28,22 @@ def get_args():
 
 def Test_error_summary_emb(y_hat, basket_theta, label_name, figure=True, table=True):
     y_hat = y_hat.detach().cpu().numpy()
-    err = y_hat - basket_theta[:, -1]
+    err = y_hat - basket_theta[:, 3]
 
     if figure:
         fig, axes = plt.subplots(2, 1, figsize=(3*2, 8))  # approximate figure size
         ax = axes[1]
         ax.hist(err, bins=30, color=[0, 0.4, 0.7], edgecolor='none')
-        ax.set_xlabel(f"$\\hat{{{label_name[-1]}}}-{label_name[-1]}$")
+        ax.set_xlabel(f"$\\hat{{{label_name[3]}}}-{label_name[3]}$")
         ax.set_ylim([0, ax.get_ylim()[1]*1.1])
 
         ax = axes[0]
-        ax.scatter(basket_theta[:, -1], err + basket_theta[:, -1], s=3, color=[0, 0.4, 0.7], marker='.')
-        ax.set_xlabel(f"${label_name[-1]}$")
-        ax.set_ylabel(f"$\\hat{{{label_name[-1]}}}$")
+        ax.scatter(basket_theta[:, 3], err + basket_theta[:, 3], s=3, color=[0, 0.4, 0.7], marker='.')
+        ax.set_xlabel(f"${label_name[3]}$")
+        ax.set_ylabel(f"$\\hat{{{label_name[3]}}}$")
 
-        ax.plot([basket_theta[:, -1].min(), basket_theta[:, -1].max()],
-                [basket_theta[:, -1].min(), basket_theta[:, -1].max()], 'r')  # reference line y=x
+        ax.plot([basket_theta[:, 3].min(), basket_theta[:, 3].max()],
+                [basket_theta[:, 3].min(), basket_theta[:, 3].max()], 'r')  # reference line y=x
         ax.set_box_aspect(1)
         plt.tight_layout()
         plt.show()
