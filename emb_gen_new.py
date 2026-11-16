@@ -23,8 +23,8 @@ from Model import PeerIModel
 
 def get_args():
     parser = argparse.ArgumentParser('nneGen')
-    parser.add_argument('--epoch', type=int, help='total epoch', default=50) # 直接优化，可增加 epoch
-    parser.add_argument('--z_dim', type=int, help='embedding dim', default=64) 
+    parser.add_argument('--epoch', type=int, help='total epoch', default=200) # 直接优化，可增加 epoch
+    parser.add_argument('--z_dim', type=int, help='embedding dim', default=1) 
     return parser.parse_args()
 
 
@@ -49,6 +49,67 @@ def Test_error_summary_emb(y_hat, basket_theta, label_name, figure=True, table=T
         ax.set_box_aspect(1)
         plt.tight_layout()
         plt.show()
+
+def plot_history(history, label_name):
+    """
+    history: simulate_moment 返回的 dict
+    label_name: set_up 里的参数名列表，顺序固定：
+        [beta_0, delta_f(=beta_w), alpha_0, alpha_p, alpha_w]
+    """
+    true = history['true_theta']
+    ep = np.arange(len(history['beta_0']))
+
+    fig, axes = plt.subplots(2, 3, figsize=(10, 6))
+    ax = axes.flatten()
+
+    # 与 theta 索引的对应关系（PeerI 模型）
+    spec = [
+        (0, 'beta_0',  history['beta_0'],  0),
+        (1, 'beta_w',  history['beta_w'],  1),
+        (2, 'alpha_0', history['alpha_0'], 2),
+        (3, 'alpha_p', history['alpha_p'], 3),
+    ]
+    for i, name, vals, ti in spec:
+        ax[i].plot(ep, vals, lw=1.2, label='estimate')
+        ax[i].axhline(true[ti], color='r', ls='--', lw=1.2, label='true')
+        ax[i].set_title(f'{name}   (true={true[ti]:.3f})', fontsize=10)
+        ax[i].set_xlabel('epoch')
+        ax[i].legend(fontsize=8)
+
+    # alpha_w：z_dim=1 时是标量；否则画每条分量
+    aw = np.array(history['alpha_w'])
+    if aw.ndim == 2 and aw.shape[1] > 1:
+        for k in range(aw.shape[1]):
+            ax[4].plot(ep, aw[:, k], lw=1.0, label=f'alpha_w[{k}]')
+    else:
+        ax[4].plot(ep, aw.reshape(-1), lw=1.2, label='estimate')
+    ax[4].axhline(true[4], color='r', ls='--', lw=1.2, label='true')
+    ax[4].set_title(f'alpha_w   (true={true[4]:.3f})', fontsize=10)
+    ax[4].set_xlabel('epoch')
+    ax[4].legend(fontsize=8)
+
+    # 三个 loss 一起看
+    ax[5].plot(ep, history['loss'],     label='total')
+    ax[5].plot(ep, history['loss_net'], label='net (BCE)')
+    ax[5].plot(ep, history['loss_out'], label='out (MSE)')
+    ax[5].set_yscale('log')
+    ax[5].set_title('losses (log)', fontsize=10)
+    ax[5].set_xlabel('epoch')
+    ax[5].legend(fontsize=8)
+
+    plt.tight_layout()
+    plt.show()
+
+    # 额外：omega 的尺度变化（识别性诊断用）
+    fig2, ax2 = plt.subplots(1, 2, figsize=(7, 3))
+    om_std  = np.array(history['omega_std']).reshape(len(ep), -1)
+    om_mean = np.array(history['omega_mean']).reshape(len(ep), -1)
+    ax2[0].plot(ep, om_std,  label='omega std')
+    ax2[0].set_title('omega std over time'); ax2[0].set_xlabel('epoch'); ax2[0].legend(fontsize=8)
+    ax2[1].plot(ep, om_mean, label='omega mean')
+    ax2[1].set_title('omega mean over time'); ax2[1].set_xlabel('epoch'); ax2[1].legend(fontsize=8)
+    plt.tight_layout()
+    plt.show()
 
 # 核心优化 1：抛弃 Node2Vec，直接用自由 Embedding 替代潜在特征 \omega
 class End2EndModel(nn.Module):
@@ -86,7 +147,15 @@ def simulate_moment(econmodel, theta, z_dim, epoch):
     
     # 计算图的度，用于同伴平均
     degree = A_dense.sum(1)
-    
+
+    history = {
+        'beta_0': [], 'beta_w': [],
+        'alpha_0': [], 'alpha_p': [],
+        'alpha_w': [],
+        'loss': [], 'loss_net': [], 'loss_out': [],
+        'omega_std': [], 'omega_mean': [],
+    }
+
     for epoch in range(epoch):
         model.train()
         optimizer.zero_grad()
@@ -96,18 +165,31 @@ def simulate_moment(econmodel, theta, z_dim, epoch):
         D = torch.cdist(z_norm, z_norm, p=1) 
         V = model.beta_0 - model.beta_w * D
         A_pred = torch.sigmoid(V) 
-        loss_net = F.binary_cross_entropy(A_pred, A_dense)
+        loss_net = F.binary_cross_entropy(A_pred, A_dense) * 10
         
         peer_avg = torch.mv(A_dense, y0) / (degree + 1e-8)
         y1_pred = model.alpha_0 + (z_norm @ model.alpha_w) + model.alpha_p * peer_avg
         loss_out = F.mse_loss(y1_pred, y1)
         
-        loss = loss_out + 1.0 * loss_net 
+        loss = loss_out + loss_net 
         
         loss.backward()
         optimizer.step()
 
-    return model.alpha_p.item()
+        history['beta_0'].append(model.beta_0.item())
+        history['beta_w'].append(model.beta_w.item())
+        history['alpha_0'].append(model.alpha_0.item())
+        history['alpha_p'].append(model.alpha_p.item())
+        history['alpha_w'].append(model.alpha_w.detach().cpu().numpy().copy())
+        history['loss'].append(loss.item())
+        history['loss_net'].append(loss_net.item())
+        history['loss_out'].append(loss_out.item())
+        history['omega_std'].append(model.omega.detach().cpu().numpy().std(0).copy())
+        history['omega_mean'].append(model.omega.detach().cpu().numpy().mean(0).copy())
+
+    history['true_theta'] = np.asarray(theta, dtype=float)
+    return history
+    #return model.alpha_p.item()
 
 def emb_gen(data):
     basket_theta = data['basket_theta']
@@ -116,24 +198,25 @@ def emb_gen(data):
 
     n = network.shape[0]
     econmodel = PeerIModel(n)
-    R = basket_theta.shape[0]
-
-    n_jobs = 20
-    print(f"Using {n_jobs} CPU cores for parallel computation.")
-
-    # 并行执行
-    # results = Parallel(n_jobs=n_jobs, backend="loky", verbose=10)(
+    #R = basket_theta.shape[0]
+    # results = Parallel(n_jobs=16, backend="multiprocessing", verbose=10)(
     #     delayed(simulate_moment)(econmodel, basket_theta[t, :], args.z_dim, args.epoch) 
     #     for t in range(R)
     # )
-
-    results = Parallel(n_jobs=16, backend="multiprocessing", verbose=10)(
+    R = 1
+    results = Parallel(n_jobs=-1, backend="multiprocessing", verbose=10)(
         delayed(simulate_moment)(econmodel, basket_theta[t, :], args.z_dim, args.epoch) 
         for t in range(R)
     )
-        
-    test_pred = torch.tensor(results, dtype=torch.float32)
-    Test_error_summary_emb(test_pred, basket_theta, label_name)
+    for t, hist in enumerate(results):
+        print(f"\n=== plotting trajectory for sample t={t} "
+              f"(alpha_p final={hist['alpha_p'][-1]:.4f}, "
+              f"true={hist['true_theta'][3]:.4f}) ===")
+        plot_history(hist, label_name)
+
+
+    # test_pred = torch.tensor(results, dtype=torch.float32)
+    # Test_error_summary_emb(test_pred, basket_theta, label_name)
 
 if __name__ == "__main__":
     args = get_args()
