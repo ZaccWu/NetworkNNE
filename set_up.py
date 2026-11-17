@@ -35,7 +35,7 @@ def set_beta_FormationIF():
 def set_beta_PeerI():
     bounds = [
         [1.5, 2, 1, r'\beta_0'],
-        [9, 5, 12, r'\delta_f'],  # beta_w
+        [9, 5, 12, r'\beta_w'],  # beta_w
 
         [0, -1, 1, r'\alpha_0'],
         [0.75, 0, 1.5, r'\alpha_p'], 
