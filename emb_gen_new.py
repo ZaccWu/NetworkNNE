@@ -24,36 +24,21 @@ from Model import PeerIModel
 def get_args():
     parser = argparse.ArgumentParser('nneGen')
     parser.add_argument('--epoch', type=int, help='total epoch', default=200) # default: 200
-    parser.add_argument('--z_dim', type=int, help='embedding dim', default=1) 
+    parser.add_argument('--z_dim', type=int, help='embedding dim', default=64) 
+    parser.add_argument('--history', type=bool, help='plot history (z=1)', default=False) 
     return parser.parse_args()
 
 
-# def Test_error_summary_emb(y_hat, basket_theta, label_name, figure=True, table=True):
-#     y_hat = y_hat.detach().cpu().numpy()
-#     err = y_hat - basket_theta[:, 3]
-
-#     if figure:
-#         fig, axes = plt.subplots(2, 1, figsize=(3*2, 8))  # approximate figure size
-#         ax = axes[1]
-#         ax.hist(err, bins=30, color=[0, 0.4, 0.7], edgecolor='none')
-#         ax.set_xlabel(f"$\\hat{{{label_name[3]}}}-{label_name[3]}$")
-#         ax.set_ylim([0, ax.get_ylim()[1]*1.1])
-
-#         ax = axes[0]
-#         ax.scatter(basket_theta[:, 3], err + basket_theta[:, 3], s=3, color=[0, 0.4, 0.7], marker='.')
-#         ax.set_xlabel(f"${label_name[3]}$")
-#         ax.set_ylabel(f"$\\hat{{{label_name[3]}}}$")
-
-#         ax.plot([basket_theta[:, 3].min(), basket_theta[:, 3].max()],
-#                 [basket_theta[:, 3].min(), basket_theta[:, 3].max()], 'r')  # reference line y=x
-#         ax.set_box_aspect(1)
-#         plt.tight_layout()
-#         plt.show()
 
 def Test_error_summary_emb(y_hat, basket_theta, label_name, figure=True, table=True):
-    label_test = basket_theta
-    n, k = basket_theta.shape # num of samples, num of output_dim
+    if args.z_dim > 1:
+        label_test = basket_theta[:,:-1]
+    else:
+        label_test = basket_theta
+    n, k = label_test.shape # num of samples, num of output_dim
     m = len(label_name)     # num of parameters
+    if args.z_dim>1:
+        m = m-1
     err = y_hat[:, :m].detach().cpu().numpy() - label_test[:, :m]
 
     if figure:
@@ -251,15 +236,24 @@ def simulate_moment(econmodel, theta, z_dim, epoch):
         history['omega_std'].append(model.omega.detach().cpu().numpy().std(0).copy())
         history['omega_mean'].append(model.omega.detach().cpu().numpy().mean(0).copy())
 
-    history['true_theta'] = np.asarray(theta, dtype=float)
-    #return history
-    return [
-        model.beta_0.item(),
-        model.beta_w.item(),
-        model.alpha_0.item(),
-        model.alpha_p.item(),
-        model.alpha_w.item(),
-    ]
+    if args.history:
+        history['true_theta'] = np.asarray(theta, dtype=float)
+        return history
+    elif args.z_dim==1:
+        return [
+            model.beta_0.item(),
+            model.beta_w.item(),
+            model.alpha_0.item(),
+            model.alpha_p.item(),
+            model.alpha_w.item(),
+        ]
+    else:
+        return [
+            model.beta_0.item(),
+            model.beta_w.item(),
+            model.alpha_0.item(),
+            model.alpha_p.item()
+        ]
 
 def emb_gen(data):
     basket_theta = data['basket_theta']
@@ -268,6 +262,7 @@ def emb_gen(data):
 
     n = network.shape[0]
     econmodel = PeerIModel(n)
+
     R = basket_theta.shape[0]
     results = Parallel(n_jobs=16, backend="multiprocessing", verbose=10)(
         delayed(simulate_moment)(econmodel, basket_theta[t, :], args.z_dim, args.epoch) 
@@ -283,11 +278,12 @@ def emb_gen(data):
     #     delayed(simulate_moment)(econmodel, basket_theta[t, :], args.z_dim, args.epoch) 
     #     for t in range(R)
     # )
-    # for t, hist in enumerate(results):
-    #     print(f"\n=== plotting trajectory for sample t={t} "
-    #           f"(alpha_p final={hist['alpha_p'][-1]:.4f}, "
-    #           f"true={hist['true_theta'][3]:.4f}) ===")
-    #     plot_history(hist, label_name)
+    # if args.history:
+    #     for t, hist in enumerate(results):
+    #         print(f"\n=== plotting trajectory for sample t={t} "
+    #             f"(alpha_p final={hist['alpha_p'][-1]:.4f}, "
+    #             f"true={hist['true_theta'][3]:.4f}) ===")
+    #         plot_history(hist, label_name)
 
 
 
